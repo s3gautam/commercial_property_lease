@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  ChevronDown,
   IndianRupee,
   MapPin,
   MessagesSquare,
@@ -150,11 +151,22 @@ export default function PropertyDetailPage() {
   );
 }
 
+interface DummyReportCategory {
+  label: string;
+  score: number;
+  note: string;
+}
+
+interface DummyReportDetails {
+  categories: DummyReportCategory[];
+  recommendations: string[];
+}
+
 // TODO: wired to a client-side dummy generator for now instead of
 // POST /properties/{id}/verification (the real AI verification
 // endpoint) so the demo works without depending on a live Groq call
-// succeeding. Swap buildDummyReport() for the real apiClient.post call
-// once that's ready to exercise end to end again.
+// succeeding. Swap buildDummyReport()/buildDummyDetails() for the real
+// apiClient.post call once that's ready to exercise end to end again.
 function buildDummyReport(property: ApiProperty): ApiVerificationReport {
   const riskScore = Math.round(10 + Math.random() * 35);
   return {
@@ -171,15 +183,50 @@ function buildDummyReport(property: ApiProperty): ApiVerificationReport {
   };
 }
 
+function buildDummyDetails(property: ApiProperty): DummyReportDetails {
+  return {
+    categories: [
+      {
+        label: "Ownership documentation",
+        score: Math.round(70 + Math.random() * 25),
+        note: "Title deed and property tax records on file appear consistent with the listed owner.",
+      },
+      {
+        label: "Zoning & compliance",
+        score: Math.round(65 + Math.random() * 25),
+        note: `Zoning classification for ${property.city} allows commercial use consistent with this listing.`,
+      },
+      {
+        label: "Lease history",
+        score: Math.round(60 + Math.random() * 30),
+        note: "No disputes or eviction filings found in available public records.",
+      },
+      {
+        label: "Structural & safety",
+        score: Math.round(70 + Math.random() * 25),
+        note: "Building age and maintenance records suggest no outstanding safety concerns.",
+      },
+    ],
+    recommendations: [
+      "Request the original title deed and most recent property tax receipt from the landlord.",
+      "Confirm the fire safety and occupancy certificate is current before signing.",
+      "Have a lawyer review the lease terms around maintenance and exit clauses.",
+    ],
+  };
+}
+
 function VerificationSection({ property }: { property: ApiProperty }) {
   const user = useAuthStore((state) => state.user);
   const [report, setReport] = useState<ApiVerificationReport | null>(null);
+  const [details, setDetails] = useState<DummyReportDetails | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const handleGenerate = () => {
     setIsGenerating(true);
     setTimeout(() => {
       setReport(buildDummyReport(property));
+      setDetails(buildDummyDetails(property));
       setIsGenerating(false);
     }, 900);
   };
@@ -195,6 +242,62 @@ function VerificationSection({ property }: { property: ApiProperty }) {
         <div className="mt-3">
           <p className="text-sm leading-relaxed text-muted-foreground">{report.summary}</p>
           {report.risk_score !== null && <RiskGauge score={report.risk_score} />}
+
+          {details && (
+            <>
+              <button
+                type="button"
+                onClick={() => setExpanded((value) => !value)}
+                className="mt-4 flex items-center gap-1.5 text-sm font-medium text-accent"
+              >
+                {expanded ? "Hide full report" : "View full report"}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+                  strokeWidth={2}
+                />
+              </button>
+
+              <div
+                className={`grid transition-all duration-300 ease-in-out ${
+                  expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+                    {details.categories.map((category) => (
+                      <div key={category.label}>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium">{category.label}</span>
+                          <span className="text-muted-foreground">{category.score}/100</span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+                          <div
+                            className="h-full rounded-full bg-accent-gradient transition-all duration-700"
+                            style={{ width: `${category.score}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{category.note}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 border-t border-border pt-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Recommendations
+                    </p>
+                    <ul className="mt-2 flex flex-col gap-1.5">
+                      {details.recommendations.map((recommendation) => (
+                        <li key={recommendation} className="flex gap-2 text-sm text-muted-foreground">
+                          <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
+                          {recommendation}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="mt-3">
