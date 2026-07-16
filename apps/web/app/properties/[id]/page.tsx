@@ -10,12 +10,14 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
+import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
 import { useAuthStore } from "@/lib/store/auth-store";
 
 const rentFormatter = new Intl.NumberFormat("en-US", {
@@ -72,7 +74,18 @@ export default function PropertyDetailPage() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back to browse
       </Link>
 
-      <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="relative mt-5 h-64 w-full overflow-hidden rounded-3xl bg-surface-2 shadow-card sm:h-80">
+        <Image
+          src={propertyImageUrl(property.id, 1200, 700)}
+          alt={property.title}
+          fill
+          priority
+          sizes="(min-width: 768px) 768px, 100vw"
+          className="object-cover"
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">{property.title}</h1>
           <p className="mt-1.5 flex items-center gap-1.5 text-muted-foreground">
@@ -105,6 +118,20 @@ export default function PropertyDetailPage() {
         <p className="mt-2 whitespace-pre-line leading-relaxed text-muted-foreground">
           {property.description}
         </p>
+      </div>
+
+      <h2 className="mt-8 flex items-center gap-2 font-medium">
+        <MapPin className="h-4 w-4 text-accent" strokeWidth={2} />
+        Location
+      </h2>
+      <div className="mt-3 overflow-hidden rounded-2xl border border-border shadow-soft">
+        <iframe
+          title="Property location"
+          src={propertyMapEmbedUrl(property)}
+          className="h-64 w-full sm:h-80"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
       </div>
 
       <VerificationSection property={property} />

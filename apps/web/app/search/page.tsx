@@ -2,11 +2,13 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { MapPin, Sparkles } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import type { ApiPropertySearchResponse } from "@/lib/api/types";
+import { propertyImageUrl } from "@/lib/property-image";
 
 const rentFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -83,17 +85,28 @@ export default function SearchPage() {
                   <Link
                     key={property.id}
                     href={`/properties/${property.id}`}
-                    className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+                    className="flex gap-3 overflow-hidden rounded-2xl border border-border bg-surface p-3 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
                   >
-                    <h2 className="font-medium tracking-tight">{property.title}</h2>
-                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
-                      {property.city}, {property.state}
-                    </p>
-                    <p className="font-semibold text-gradient">
-                      {rentFormatter.format(property.monthly_rent)}
-                      <span className="text-xs font-normal text-muted-foreground">/mo</span>
-                    </p>
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2">
+                      <Image
+                        src={propertyImageUrl(property.id, 160, 160)}
+                        alt=""
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col justify-center gap-1">
+                      <h2 className="line-clamp-1 font-medium tracking-tight">{property.title}</h2>
+                      <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
+                        {property.city}, {property.state}
+                      </p>
+                      <p className="font-semibold text-gradient">
+                        {rentFormatter.format(property.monthly_rent)}
+                        <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                      </p>
+                    </div>
                   </Link>
                 ))}
               </div>
