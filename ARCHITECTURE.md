@@ -105,6 +105,35 @@ contracts, and design tokens have one source of truth.
   render a shared `<ComingSoon />` placeholder rather than mock data or a
   half-built flow.
 
+## Mobile App Conventions
+
+`apps/mobile` mirrors every convention above (same `ApiClient` pattern,
+same Zustand session shape, same local response types, same
+`<ComingSoon />` pattern for unimplemented steps) with native-appropriate
+substitutions:
+
+- Session persistence uses `@react-native-async-storage/async-storage`
+  instead of localStorage (`apps/mobile/lib/store/auth-store.ts`).
+- Navigation is native via Expo Router — a `(tabs)` group (`Tabs`
+  navigator: Browse, AI Search, KYC, Lease, Profile) plus modal-presented
+  `/login` and `/onboarding` screens and a pushed `/property/[id]` detail
+  screen. There is no responsive-website-in-a-shell; screens use RN
+  primitives (`View`, `FlatList`, `Pressable`) throughout, not web
+  components.
+- Forms use `react-hook-form` with `Controller` (per the mobile tech
+  stack), whereas the web app uses plain `useState` — this is an
+  intentional difference, not an inconsistency to fix.
+- Styling is NativeWind v4 (Tailwind classes via `className` on RN
+  components), configured in `tailwind.config.js` + `global.css` +
+  `metro.config.js`'s `withNativeWind` wrapper.
+- Monorepo/pnpm note: Metro's dependency resolution is stricter than
+  Node's about transitive dependencies. Packages that are only pulled in
+  indirectly (e.g. `react-native-css-interop` via NativeWind's babel
+  preset, `@babel/runtime` via Babel's injected helpers) may need to be
+  added as **direct** dependencies of `apps/mobile` even though the app
+  code never imports them explicitly — pnpm's isolation correctly refuses
+  to let Metro reach into a dependency's own dependencies otherwise.
+
 ## Extension Points
 
 - New portals (Landlord, Broker, Admin) add new routers/services/repos

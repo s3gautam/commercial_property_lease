@@ -5,14 +5,14 @@ the end of every phase.
 
 ## Overall Progress
 
-Phase 3 of 14 complete (Repository Setup, Backend Foundation/Auth/Database,
-Web Application foundation).
+Phase 4 of 14 complete (Repository Setup, Backend Foundation/Auth/Database,
+Web Application foundation, Mobile Application foundation).
 
 ## Current Phase
 
-Phase 3 — Web Application: **Complete** (foundation slice — see scope note
-below)
-Next: Phase 4 — Mobile Application
+Phase 4 — Mobile Application: **Complete** (foundation slice, feature parity
+with the Phase 3 web scope)
+Next: Phase 5 — AI Services
 
 ## Completed Tasks
 
@@ -111,9 +111,56 @@ half-implement" principle.
   properties, confirming the authenticated nav state and all three
   placeholder routes render correctly
 
+### Phase 4 — Mobile Application (foundation slice, parity with Phase 3 web)
+
+- `apps/mobile`: NativeWind v4 wired up for real (tailwind.config.js,
+  global.css, metro.config.js with `withNativeWind`,
+  `nativewind-env.d.ts` type augmentation for `className` props on RN
+  components) — Phase 1 had only installed the package
+- Native navigation via Expo Router: a `(tabs)` group (Browse, AI Search,
+  KYC, Lease, Profile) using `Tabs`, plus modal-presented `/login` and
+  `/onboarding` and a pushed `/property/[id]` detail screen — no
+  responsive-website-in-a-shell, per the mobile design principle
+- `lib/api/client.ts` + `lib/api/types.ts` mirror the web app's (same
+  `ApiClient` from `@proplease/api`, same snake_case response types);
+  `lib/store/auth-store.ts` is the same Zustand shape as web but
+  persisted via `@react-native-async-storage/async-storage` instead of
+  localStorage
+- Screens, all wired to the real backend (no mock data): `/login`
+  (email/phone OTP, via `react-hook-form` per the mobile stack),
+  `/onboarding` (create/edit tenant profile), Browse tab (`FlatList`,
+  city filter, pagination), `/property/[id]` detail (verification/chat
+  placeholder sections, matching web), Profile tab (login CTA when
+  logged out; email, company, business type, edit, and log out when
+  logged in), and `ComingSoon`-based Search/KYC/Lease tabs
+- Fixed real monorepo issues surfaced while building this:
+  - `apps/mobile/tsconfig.json`'s `@/*` alias pointed only at `./app/*`
+    (same bug pattern as the web app in Phase 3)
+  - Two transitive dependencies Metro couldn't resolve under pnpm's
+    strict per-package isolation — `react-native-css-interop`
+    (NativeWind's injected JSX runtime) and `@babel/runtime` (Babel's
+    injected helpers) — needed to be added as **direct** dependencies
+    of `apps/mobile`, since pnpm correctly refuses to let a package
+    reach into a dependency's own transitive dependencies
+  - Tried (and reverted) `node-linker=hoisted` globally to fix mobile-web
+    bundling: it broke `apps/web`'s production build with a duplicate-
+    React `useContext` crash. The targeted per-package dependency fix
+    above solved the mobile issue without touching pnpm's linking
+    strategy or affecting web at all
+- Verified for real: `tsc --noEmit` clean, and since `expo start --web`
+  hit an unrelated Metro dev-server bug (bundle URLs computed with a
+  broken `../../` prefix under a monorepo — a known Expo/Metro web-only
+  quirk, irrelevant to the real iOS/Android targets), used
+  `expo export --platform web` (a full production bundle, 648 modules,
+  zero errors) served statically and drove the actual golden path in a
+  headless Chromium browser against the live FastAPI + Postgres + Redis
+  backend: browse (all 3 seeded properties) → city filter → property
+  detail → Search/KYC/Lease placeholder tabs → Profile (logged-out CTA)
+  → OTP login (code read from the real backend log) → onboarding →
+  Profile (logged-in, showing email, saved company name, log out)
+
 ## Pending Tasks
 
-- Phase 4: Mobile application (feature parity with web)
 - Phase 5: AI services (SearchAgent, VerificationAgent,
   LeaseDraftingAgent, LeaseSummaryAgent implementations) — unblocks the
   Search and Verification Report steps in the web/mobile UI
@@ -147,9 +194,20 @@ None known.
   defines web-local types matching reality instead. Reconcile these once
   more of the backend is built out and the shared type's shape stabilizes.
 - No frontend tests yet (the golden path was verified manually via a
-  scripted Playwright run in-session, not committed as a test).
+  scripted Playwright run in-session, not committed as a test, for both
+  web and mobile).
 - Property images/documents aren't rendered on the detail page — schema
-  and repository support them, but no upload flow or UI exists.
+  and repository support them, but no upload flow or UI exists. This
+  applies to both web and mobile.
+- Mobile was never run on an actual iOS/Android simulator or device in
+  this session (none available) — only typechecked and verified via
+  `expo export --platform web`. The core logic (screens, data fetching,
+  navigation) is platform-agnostic, so this should carry over, but native-
+  only concerns (safe-area insets, keyboard avoidance, deep linking,
+  gesture behavior) are unverified.
+- Neither `apps/web` nor `apps/mobile` implements Google Sign-In in the UI
+  yet (the backend endpoint exists) — both only offer OTP login, since
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are unset in `.env`.
 
 ## Future Enhancements
 
