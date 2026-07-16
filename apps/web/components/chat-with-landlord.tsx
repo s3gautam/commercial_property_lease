@@ -8,9 +8,17 @@ import { useEffect, useRef, useState } from "react";
 import { apiClient } from "@/lib/api/client";
 import type { ApiChatMessage, ApiChatReply } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { useBookingsStore } from "@/lib/store/bookings-store";
 
-export function ChatWithLandlord({ propertyId }: { propertyId: string }) {
+export function ChatWithLandlord({
+  propertyId,
+  propertyTitle,
+}: {
+  propertyId: string;
+  propertyTitle: string;
+}) {
   const user = useAuthStore((state) => state.user);
+  const addBooking = useBookingsStore((state) => state.addBooking);
   const [messages, setMessages] = useState<ApiChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -25,6 +33,16 @@ export function ChatWithLandlord({ propertyId }: { propertyId: string }) {
     onSuccess: (response) => {
       if (!response.data) return;
       setMessages((prev) => [...prev, { role: "landlord", content: response.data!.reply }]);
+
+      const booking = response.data.booking;
+      if (booking) {
+        addBooking({
+          propertyId,
+          propertyTitle,
+          dateKey: booking.date,
+          time: booking.time,
+        });
+      }
     },
   });
 

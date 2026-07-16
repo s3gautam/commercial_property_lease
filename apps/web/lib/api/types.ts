@@ -86,6 +86,12 @@ export interface ApiChatMessage {
   content: string;
 }
 
+export interface ApiChatBooking {
+  date: string;
+  time: string;
+}
+
 export interface ApiChatReply {
   reply: string;
+  booking: ApiChatBooking | null;
 }

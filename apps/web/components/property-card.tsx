@@ -1,15 +1,10 @@
+import { formatInr } from "@proplease/utils";
 import { MapPin, Ruler } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import type { ApiProperty } from "@/lib/api/types";
 import { propertyImageUrl } from "@/lib/property-image";
-
-const rentFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 export function PropertyCard({
   property,
@@ -49,7 +44,7 @@ export function PropertyCard({
             {property.area_sqft.toLocaleString()} sqft
           </p>
           <p className="font-semibold text-gradient">
-            {rentFormatter.format(property.monthly_rent)}
+            {formatInr(property.monthly_rent)}
             <span className="text-xs font-normal text-muted-foreground">/mo</span>
           </p>
         </div>

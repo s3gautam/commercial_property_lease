@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { formatInr } from "@proplease/utils";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from "react-native";
@@ -7,12 +8,6 @@ import { apiClient } from "@/lib/api/client";
 import type { ApiProperty } from "@/lib/api/types";
 
 const PAGE_SIZE = 20;
-
-const rentFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 export default function BrowseScreen() {
   const router = useRouter();
@@ -67,7 +62,7 @@ export default function BrowseScreen() {
                 {item.city}, {item.state}
               </Text>
               <Text className="mt-1 font-medium text-black dark:text-white">
-                {rentFormatter.format(item.monthly_rent)}/mo
+                {formatInr(item.monthly_rent)}/mo
               </Text>
             </Pressable>
           )}

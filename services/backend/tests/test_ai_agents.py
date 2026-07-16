@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.ai.agents.landlord_chat_agent import LandlordChatAgent, LandlordChatMessage
+from app.ai.agents.landlord_chat_agent import FALLBACK_REPLY, LandlordChatAgent, LandlordChatMessage
 from app.ai.agents.lease_drafting_agent import LeaseDraftingAgent
 from app.ai.agents.lease_summary_agent import LeaseSummaryAgent
 from app.ai.agents.search_agent import SearchAgent
@@ -12,6 +12,7 @@ from app.ai.agents.verification_agent import VerificationAgent
 from app.ai.gateway import LLMResult
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, PropertyStatus
+from app.services.visit_schedule import get_available_slots
 
 
 def _llm_result(content: str) -> LLMResult:
@@ -154,19 +155,41 @@ async def test_lease_summary_agent_summarizes() -> None:
 async def test_landlord_chat_agent_replies_in_character() -> None:
     agent = LandlordChatAgent()
     agent.gateway.complete = AsyncMock(
-        return_value=_llm_result("Sure, the space is available from next month!")
+        return_value=_llm_result(
+            '{"reply": "Sure, the space is available from next month!", "booking": null}'
+        )
     )
 
     response = await agent.run(_property(), "Is it available soon?", [])
 
     assert response.validation_status == "valid"
     assert response.response.reply == "Sure, the space is available from next month!"
+    assert response.response.booking_date is None
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_uses_json_mode() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result('{"reply": "Hi there!", "booking": null}')
+    )
+
+    await agent.run(_property(), "Hello?", [])
+
+    _system_prompt, _user_prompt, kwargs = (
+        agent.gateway.complete.call_args.args[0],
+        agent.gateway.complete.call_args.args[1],
+        agent.gateway.complete.call_args.kwargs,
+    )
+    assert kwargs.get("json_mode") is True
 
 
 @pytest.mark.asyncio
 async def test_landlord_chat_agent_includes_history_in_prompt() -> None:
     agent = LandlordChatAgent()
-    agent.gateway.complete = AsyncMock(return_value=_llm_result("Yes, pets are fine!"))
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result('{"reply": "Yes, pets are fine!", "booking": null}')
+    )
 
     history = [
         LandlordChatMessage(role="tenant", content="Do you allow pets?"),
@@ -180,11 +203,75 @@ async def test_landlord_chat_agent_includes_history_in_prompt() -> None:
 
 
 @pytest.mark.asyncio
+async def test_landlord_chat_agent_includes_available_slots_in_prompt() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result('{"reply": "Sure!", "booking": null}')
+    )
+    property_ = _property()
+
+    await agent.run(property_, "Can I visit?", [])
+
+    _system_prompt, user_prompt = agent.gateway.complete.call_args.args
+    slots = get_available_slots(property_.id)
+    assert slots, "test property should have at least one available day in the next 7 days"
+    assert slots[0].times[0] in user_prompt
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_confirms_booking_for_real_slot() -> None:
+    agent = LandlordChatAgent()
+    property_ = _property()
+    slots = get_available_slots(property_.id)
+    assert slots
+    day, time = slots[0].day, slots[0].times[0]
+
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result(
+            f'{{"reply": "Great, see you then!", "booking": {{"date": "{day.isoformat()}", "time": "{time}"}}}}'
+        )
+    )
+
+    response = await agent.run(property_, "Yes let's do that", [])
+
+    assert response.response.booking_date == day.isoformat()
+    assert response.response.booking_time == time
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_rejects_booking_for_unavailable_slot() -> None:
+    agent = LandlordChatAgent()
+    property_ = _property()
+
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result(
+            '{"reply": "Booked!", "booking": {"date": "2099-01-01", "time": "11:59 PM"}}'
+        )
+    )
+
+    response = await agent.run(property_, "Book the impossible slot", [])
+
+    assert response.response.booking_date is None
+    assert response.response.booking_time is None
+
+
+@pytest.mark.asyncio
 async def test_landlord_chat_agent_falls_back_on_empty_reply() -> None:
     agent = LandlordChatAgent()
-    agent.gateway.complete = AsyncMock(return_value=_llm_result("   "))
+    agent.gateway.complete = AsyncMock(return_value=_llm_result('{"reply": "", "booking": null}'))
 
     response = await agent.run(_property(), "Hello?", [])
 
     assert response.validation_status == "invalid"
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_falls_back_on_invalid_json() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(return_value=_llm_result("not json at all"))
+
+    response = await agent.run(_property(), "Hello?", [])
+
+    assert response.validation_status == "invalid"
+    assert response.response.reply == FALLBACK_REPLY
     assert response.response.reply

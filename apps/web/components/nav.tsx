@@ -20,6 +20,8 @@ export function Nav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const links = user ? [...NAV_LINKS, { href: "/profile", label: "Profile" }] : NAV_LINKS;
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -35,7 +37,7 @@ export function Nav() {
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm sm:flex">
-          {NAV_LINKS.map((link) => {
+          {links.map((link) => {
             const active = pathname?.startsWith(link.href);
             return (
               <Link
@@ -90,7 +92,7 @@ export function Nav() {
         }`}
       >
         <nav className="flex flex-col gap-1 border-t border-border px-6 py-4 text-sm">
-          {NAV_LINKS.map((link) => {
+          {links.map((link) => {
             const active = pathname?.startsWith(link.href);
             return (
               <Link

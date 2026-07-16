@@ -271,6 +271,24 @@ None known.
 ## Technical Debt
 
 - No CI pipeline configured yet.
+- "Schedule a visit" (property detail page primary CTA) and its
+  bookings (viewable/cancellable/reschedulable from `/profile`) are
+  entirely client-side — `apps/web/lib/store/bookings-store.ts` is a
+  localStorage-persisted Zustand store, not a backend table. There's no
+  `Visit`/`Booking` model, so bookings don't survive clearing browser
+  storage, aren't visible to any future landlord-side portal, and
+  reasonably could conflict (two tenants "booking" the same displayed
+  slot client-side, since availability is a deterministic function, not
+  a real shared calendar with locking). `apps/mobile` doesn't have this
+  UI. The chat agent can also confirm a booking directly (see
+  ARCHITECTURE.md's AI Layer section) through the same client-side
+  store.
+- Currency is now ₹ (Indian digit grouping — lakh/crore) everywhere via
+  `packages/utils::formatInr`, replacing the earlier `$`/USD
+  formatting. `prompts/property_search.v1.txt` was updated to ask the
+  SearchAgent for INR amounts, but there's no unit test asserting the
+  model actually returns INR-scale numbers rather than a stray
+  USD-scale guess - only that the field parses as a number.
 - KYC endpoints/services are not yet implemented on the backend — only
   the database schema exists. `apps/web`'s `/kyc` page is a client-only
   mock (document "upload" is just a file picker, "verification" is a

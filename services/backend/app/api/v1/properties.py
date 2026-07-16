@@ -10,7 +10,7 @@ from app.core.database import get_db_session
 from app.models.user import User
 from app.repositories.property_repository import PropertyRepository
 from app.repositories.verification_report_repository import VerificationReportRepository
-from app.schemas.chat import ChatReplyResponse, ChatRequest
+from app.schemas.chat import ChatBookingSchema, ChatReplyResponse, ChatRequest
 from app.schemas.common import ApiResponse
 from app.schemas.property import PropertyRead
 from app.schemas.search import PropertySearchResponse, SearchCriteriaRead
@@ -144,7 +144,7 @@ async def chat_with_landlord(
     _current_user: Annotated[User, Depends(get_current_user)],
 ) -> ApiResponse[ChatReplyResponse]:
     try:
-        reply = await chat_service.reply(
+        chat_reply = await chat_service.reply(
             property_id,
             payload.message,
             [LandlordChatMessage(role=m.role, content=m.content) for m in payload.history],
@@ -152,4 +152,11 @@ async def chat_with_landlord(
     except PropertyNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    return ApiResponse(success=True, data=ChatReplyResponse(reply=reply))
+    booking = (
+        ChatBookingSchema(date=chat_reply.booking_date, time=chat_reply.booking_time)
+        if chat_reply.booking_date and chat_reply.booking_time
+        else None
+    )
+    return ApiResponse(
+        success=True, data=ChatReplyResponse(reply=chat_reply.reply, booking=booking)
+    )

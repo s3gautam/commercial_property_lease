@@ -13,5 +13,11 @@ class ChatRequest(BaseModel):
     history: list[ChatMessageSchema] = Field(default_factory=list, max_length=50)
 
 
+class ChatBookingSchema(BaseModel):
+    date: str
+    time: str
+
+
 class ChatReplyResponse(BaseModel):
     reply: str
+    booking: ChatBookingSchema | None = None

@@ -3,7 +3,7 @@ space they are looking for in plain language. Extract structured search
 criteria as a JSON object with exactly these keys:
 
 - "city": string or null — the city they mentioned, if any
-- "max_rent": number or null — maximum monthly rent in USD, if mentioned
+- "max_rent": number or null — maximum monthly rent in INR (₹), if mentioned
 - "min_area_sqft": number or null — minimum area in square feet, if mentioned
 - "keywords": array of strings — up to 5 short keywords describing the type
   of space (e.g. "office", "retail", "warehouse", "restaurant")

@@ -1,16 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatInr } from "@proplease/utils";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/store/auth-store";
-
-const rentFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 export default function PropertyDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,7 +43,7 @@ export default function PropertyDetailScreen() {
       </Text>
 
       <View className="mt-6 flex-row flex-wrap gap-3">
-        <Stat label="Monthly rent" value={`${rentFormatter.format(property.monthly_rent)}/mo`} />
+        <Stat label="Monthly rent" value={`${formatInr(property.monthly_rent)}/mo`} />
         <Stat label="Area" value={`${property.area_sqft.toLocaleString()} sqft`} />
         <Stat label="Status" value={property.status} />
       </View>

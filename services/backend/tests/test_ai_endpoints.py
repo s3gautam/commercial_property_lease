@@ -204,7 +204,11 @@ async def test_chat_endpoint_returns_landlord_reply(client: AsyncClient, db_sess
 
     with patch(
         "app.ai.gateway.LLMGateway.complete",
-        AsyncMock(return_value=_llm_result("Sure, it's available from the 1st!")),
+        AsyncMock(
+            return_value=_llm_result(
+                '{"reply": "Sure, it\'s available from the 1st!", "booking": null}'
+            )
+        ),
     ):
         response = await client.post(
             f"/api/v1/properties/{property_.id}/chat",
@@ -214,6 +218,41 @@ async def test_chat_endpoint_returns_landlord_reply(client: AsyncClient, db_sess
 
     assert response.status_code == 200
     assert response.json()["data"]["reply"] == "Sure, it's available from the 1st!"
+    assert response.json()["data"]["booking"] is None
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_confirms_booking_for_real_slot(
+    client: AsyncClient, db_session
+) -> None:
+    from app.services.visit_schedule import get_available_slots
+
+    property_ = await _create_listed_property(db_session)
+    access_token = await _login(client, "chat-tenant3@example.com", "666777")
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    slots = get_available_slots(property_.id)
+    assert slots
+    day, time = slots[0].day, slots[0].times[0]
+
+    with patch(
+        "app.ai.gateway.LLMGateway.complete",
+        AsyncMock(
+            return_value=_llm_result(
+                f'{{"reply": "Great, see you then!", '
+                f'"booking": {{"date": "{day.isoformat()}", "time": "{time}"}}}}'
+            )
+        ),
+    ):
+        response = await client.post(
+            f"/api/v1/properties/{property_.id}/chat",
+            json={"message": "Yes let's book that"},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["booking"] == {"date": day.isoformat(), "time": time}
 
 
 @pytest.mark.asyncio

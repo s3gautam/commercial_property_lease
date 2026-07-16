@@ -1,5 +1,6 @@
 "use client";
 
+import { formatInr } from "@proplease/utils";
 import { useMutation } from "@tanstack/react-query";
 import { MapPin, Sparkles } from "lucide-react";
 import Image from "next/image";
@@ -9,12 +10,6 @@ import { useState } from "react";
 import { apiClient } from "@/lib/api/client";
 import type { ApiPropertySearchResponse } from "@/lib/api/types";
 import { propertyImageUrl } from "@/lib/property-image";
-
-const rentFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -49,7 +44,7 @@ export default function SearchPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="e.g. office space in Austin under $5000"
+            placeholder="e.g. office space in Pune under ₹50,000"
             className="flex-1 rounded-full border border-border bg-surface px-4 py-3 text-sm shadow-soft outline-none transition-shadow focus:shadow-glow"
           />
           <button
@@ -103,7 +98,7 @@ export default function SearchPage() {
                         {property.city}, {property.state}
                       </p>
                       <p className="font-semibold text-gradient">
-                        {rentFormatter.format(property.monthly_rent)}
+                        {formatInr(property.monthly_rent)}
                         <span className="text-xs font-normal text-muted-foreground">/mo</span>
                       </p>
                     </div>

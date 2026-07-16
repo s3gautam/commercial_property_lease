@@ -85,6 +85,43 @@ The client round-trips the conversation history in each request instead.
 `apps/web`'s `ChatWithLandlord` component (`components/chat-with-
 landlord.tsx`) keeps that history in local component state.
 
+The agent also outputs structured JSON (`gateway.complete(...,
+json_mode=True)`) with a `booking` field alongside `reply`, so it can
+propose and confirm visit slots in the same conversation: the prompt is
+given the property's real "Available visit slots" (next 7 days, from
+`app/services/visit_schedule.py` — deterministic per property id/date,
+using the *exact same* hash algorithm as `apps/web/lib/property-
+schedule.ts` so the chat's proposed times and the calendar modal's
+availability always agree) and instructed to only ever mention slots
+from that list, and only set `booking` once the tenant has explicitly
+confirmed one. Critically, the agent's claimed booking is re-validated
+in code (`_attach_validated_booking` calls `visit_schedule.
+is_slot_available`) before being trusted — the model can still
+hallucinate a confirmation even when told not to, so a fabricated or
+already-taken slot is silently dropped rather than passed through.
+When `POST /api/v1/properties/{id}/chat`'s response includes a
+non-null `booking`, `ChatWithLandlord` calls the same
+`useBookingsStore` (`lib/store/bookings-store.ts`, localStorage-backed
+— see Scheduling below) that the manual "Schedule a visit" flow uses,
+so a chat-confirmed visit shows up in Profile > My bookings exactly
+like a manually scheduled one.
+
+## Scheduling a visit
+
+There's no real landlord/broker calendar system, so "Schedule a visit"
+is filler with the same honesty as the amenities/nearby/photo data:
+`getTimeSlots`/`getUpcomingDates` (`apps/web/lib/property-
+schedule.ts`) deterministically generate ~70%-available hourly slots
+Monday-Saturday (closed Sundays) per property+date. `ScheduleVisitCta`
+is the property detail page's primary CTA (a full-width banner right
+under the title, ahead of the stats grid) opening
+`ScheduleVisitModal` — a date-strip + time-grid picker reused as-is by
+the profile page's "Reschedule" action. Confirmed bookings live in
+`useBookingsStore` (Zustand + `persist`, i.e. localStorage — there's no
+backend Visit/Booking model), with `addBooking`/`cancelBooking`/
+`rescheduleBooking` actions. `/profile` lists them (upcoming and
+cancelled, separately) with Reschedule/Cancel per booking.
+
 `Property.amenities` and `Property.nearby_landmarks` are computed
 `@property` accessors (not database columns) backed by the same
 `property_facts.py` module, exposed on `PropertyRead` so the web app's
@@ -180,6 +217,14 @@ contracts, and design tokens have one source of truth.
 - All server data fetching goes through TanStack Query
   (`app/providers.tsx` wraps the app in a `QueryClientProvider`) — no
   ad-hoc `useEffect` + `fetch`.
+- All rent/price display goes through `formatInr` (`packages/utils`),
+  which renders `₹` with Indian digit grouping (lakh/crore — `₹2,16,474`
+  not `₹216,474`). Implemented by hand rather than
+  `Intl.NumberFormat("en-IN", ...)` since React Native's Hermes engine
+  doesn't reliably ship `en-IN` locale data even where basic `Intl`
+  support exists, so the same hand-rolled function is shared by both
+  `apps/web` and `apps/mobile` rather than trusting the platform's
+  locale-aware formatter to behave identically everywhere.
 - Backend response types are defined locally per app
   (`apps/web/lib/api/types.ts`) matching the actual JSON shape (currently
   snake_case, per the backend's Pydantic schemas) rather than force-fit

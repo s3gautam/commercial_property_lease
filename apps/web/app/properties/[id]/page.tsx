@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { formatInr } from "@proplease/utils";
 import {
   ArrowLeft,
   ChevronDown,
@@ -19,16 +20,11 @@ import { AmenitiesSection } from "@/components/amenities-section";
 import { ChatWithLandlord } from "@/components/chat-with-landlord";
 import { NearbySection } from "@/components/nearby-section";
 import { RecommendedProperties } from "@/components/recommended-properties";
+import { ScheduleVisitCta } from "@/components/schedule-visit-cta";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
 import { useAuthStore } from "@/lib/store/auth-store";
-
-const rentFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
 const STATUS_STYLES: Record<string, string> = {
   listed: "bg-success/15 text-success",
@@ -106,11 +102,13 @@ export default function PropertyDetailPage() {
         </span>
       </div>
 
+      <ScheduleVisitCta propertyId={property.id} propertyTitle={property.title} />
+
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat
           icon={IndianRupee}
           label="Monthly rent"
-          value={`${rentFormatter.format(property.monthly_rent)}/mo`}
+          value={`${formatInr(property.monthly_rent)}/mo`}
           accent
         />
         <Stat icon={Ruler} label="Area" value={`${property.area_sqft.toLocaleString()} sqft`} />
@@ -144,7 +142,7 @@ export default function PropertyDetailPage() {
 
       <VerificationSection property={property} />
 
-      <ChatWithLandlord propertyId={property.id} />
+      <ChatWithLandlord propertyId={property.id} propertyTitle={property.title} />
 
       <RecommendedProperties current={property} />
     </main>
