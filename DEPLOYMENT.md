@@ -110,6 +110,25 @@ missing before this should hold real user data.
   need to check Railway's deploy logs to find the code until a real
   email/SMS provider is wired in.
 
+### Seeding sample properties
+
+There's no admin UI for listings yet, so the browse page is empty on a
+fresh deploy. `services/backend/scripts/seed_properties.py` inserts 35
+dummy `LISTED` properties for manual testing. Run it against Railway with
+the [Railway CLI](https://docs.railway.com/guides/cli):
+
+```bash
+npm i -g @railway/cli
+railway login
+railway link          # select this project
+cd services/backend
+railway run python -m scripts.seed_properties
+```
+
+`railway run` injects the linked environment's variables (including
+`DATABASE_URL`) into the local process, so the script writes directly to
+the production database without needing direct network access to it.
+
 ### Mobile
 
 Not covered above — mobile ships via Expo Go / EAS Build / app stores,
