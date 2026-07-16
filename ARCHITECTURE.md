@@ -34,8 +34,11 @@ Application -> Agent -> Prompt Builder -> LLM Gateway -> Groq -> Output Validato
 - `app/ai/base_agent.py` defines `BaseAgent`, the contract every AI
   capability implements: `run()`, `validate()`, `explain()`,
   `confidence_score()`.
-- `app/ai/prompt_builder.py` loads versioned templates from `/prompts`.
-  Prompts are never hardcoded inline.
+- `app/ai/prompt_builder.py` loads versioned templates from
+  `services/backend/prompts` (inside the backend's own directory rather than
+  the monorepo root, so the templates ship inside the backend's Docker build
+  context — Railway and other per-service builds only see the service's own
+  subtree). Prompts are never hardcoded inline.
 - `app/ai/gateway.py` is the single module allowed to call an LLM provider
   (Groq today). Swapping providers means changing this file only.
   `LLMGateway.complete(json_mode=True)` requests Groq's structured JSON
@@ -180,6 +183,6 @@ substitutions:
 - New portals (Landlord, Broker, Admin) add new routers/services/repos
   under the same layering without touching Tenant code paths.
 - New AI agents subclass `BaseAgent` and register their own prompt
-  template under `/prompts`.
+  template under `services/backend/prompts`.
 - New LLM providers are added inside `LLMGateway` behind the same
   interface; callers are unaffected.
