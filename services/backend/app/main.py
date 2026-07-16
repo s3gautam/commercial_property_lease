@@ -17,11 +17,17 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     settings = get_settings()
 
+    if settings.is_production and not settings.cors_allowed_origins_list:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS must be set in production, or the frontend "
+            "will never be able to call this API."
+        )
+
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if not settings.is_production else [],
+        allow_origins=settings.cors_allowed_origins_list if settings.is_production else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

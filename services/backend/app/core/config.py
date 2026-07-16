@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,8 +11,26 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     environment: str = "development"
 
+    # Comma-separated allowed origins for CORS in production, e.g.
+    # "https://app.example.com,https://www.example.com". Ignored outside
+    # production, where all origins are allowed for local dev convenience.
+    cors_allowed_origins: str = ""
+
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/proplease"
     redis_url: str = "redis://localhost:6379/0"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        # Managed Postgres providers (Railway, Heroku, etc.) hand out
+        # postgres:// or postgresql:// URLs; SQLAlchemy's async engine needs
+        # the +asyncpg driver suffix. Normalize here so no manual URL editing
+        # is needed when wiring up a provider's connection string.
+        if value.startswith("postgres://"):
+            return "postgresql+asyncpg://" + value[len("postgres://") :]
+        if value.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + value[len("postgresql://") :]
+        return value
 
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
@@ -37,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
 
 
 @lru_cache

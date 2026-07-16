@@ -100,6 +100,24 @@ All outbound HTTP (Groq, OAuth providers, object storage) goes through
 `REQUESTS_CA_BUNDLE`, and `SSL_CERT_FILE` handling. No other module sets
 `verify=False`.
 
+## Production Guardrails
+
+Two things fail loudly at startup rather than silently misbehaving in
+production (`environment=production`):
+
+- `DISABLE_SSL_VERIFY=true` raises in `app/core/http_client.py` — this
+  flag is for corporate-SSL-interception dev environments only.
+- Missing `CORS_ALLOWED_ORIGINS` raises in `app/main.py` — without it,
+  the previous behavior was silently blocking every cross-origin request
+  from the deployed frontend, which is a confusing failure mode to debug
+  after the fact. `Settings.database_url` also normalizes a bare
+  `postgres://`/`postgresql://` URL (what most managed Postgres
+  providers hand out) to the `+asyncpg` driver scheme SQLAlchemy needs,
+  so no manual URL editing is required when wiring up a provider.
+
+See DEPLOYMENT.md's Production section for the concrete Railway/Vercel
+setup these guardrails are designed around.
+
 ## Frontend Sharing
 
 `packages/api`, `packages/types`, `packages/ui`, and `packages/utils` are

@@ -223,6 +223,35 @@ Groq -> Output Validator architecture from Phase 1.
   integration-tested against a contract, not against the real provider,
   until someone runs it with a real key.
 
+### Out-of-band: minimal production deployment prep
+
+Not part of the phased plan, done ahead of it because the user wanted to
+test with a real `GROQ_API_KEY` outside this sandbox's network block, and
+that turned into "let's actually deploy it." Fixed two things that would
+have broken a real deployment outright:
+
+- `app/main.py`'s CORS config previously set `allow_origins=[]` in
+  production — meaning the deployed web app could never successfully
+  call the backend from a browser, silently. Now raises at startup if
+  `CORS_ALLOWED_ORIGINS` isn't set, and reads the allowed origins from it.
+- `Settings.database_url` now normalizes a bare `postgres://` or
+  `postgresql://` URL (what Railway/Heroku-style managed Postgres hands
+  out) to the `+asyncpg` driver scheme SQLAlchemy needs — avoids a
+  manual-URL-editing footgun.
+- `services/backend/Dockerfile` no longer runs uvicorn with `--reload`
+  (dev-only) and now has an entrypoint (`docker-entrypoint.sh`) that runs
+  `alembic upgrade head` before starting the server, so migrations never
+  need a manual step on deploy. `infra/docker-compose.yml`'s local-dev
+  backend service overrides the command back to `--reload` so local hot
+  reload is unaffected.
+- Documented a concrete Vercel (web) + Railway (backend/Postgres/Redis)
+  deployment path in DEPLOYMENT.md's Production section.
+
+This is **not** the full Phase-14-style production hardening pass — no
+CI/CD, no monitoring, no secrets manager, no object storage for uploads,
+and OTP codes still only reach `structlog` (Railway's deploy logs), not
+a real inbox. See Technical Debt below.
+
 ## Pending Tasks
 
 - Phase 6: KYC — unblocks the `/kyc` flow
