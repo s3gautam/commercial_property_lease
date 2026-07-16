@@ -300,9 +300,13 @@ None known.
   navigation) is platform-agnostic, so this should carry over, but native-
   only concerns (safe-area insets, keyboard avoidance, deep linking,
   gesture behavior) are unverified.
-- Neither `apps/web` nor `apps/mobile` implements Google Sign-In in the UI
-  yet (the backend endpoint exists) — both only offer OTP login, since
-  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are unset in `.env`.
+- `apps/web` now renders a real "Continue with Google" button
+  (`components/google-sign-in-button.tsx`, Google Identity Services)
+  behind `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — hidden if that's unset. Untested
+  against a real Google OAuth client end-to-end (needs `GOOGLE_CLIENT_ID`
+  configured on both frontend and backend to verify). `apps/mobile` still
+  has no Google Sign-In UI — would need `expo-auth-session` or a native
+  SDK, not the browser-based GIS flow used on web.
 - No agent output has ever been validated against a real Groq response —
   see the Phase 5 note above. Prompt wording, JSON-mode reliability, and
   the fallback paths are only as good as their unit tests until someone

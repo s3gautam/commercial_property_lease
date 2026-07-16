@@ -84,7 +84,15 @@ Supported login methods, all issuing the same JWT access/refresh pair
 
 - **Google OAuth** (`app/services/google_oauth.py`): verifies a Google ID
   token against Google's tokeninfo endpoint (via the centralized HTTP
-  client) and checks the audience matches `GOOGLE_CLIENT_ID`.
+  client) and checks the audience matches `GOOGLE_CLIENT_ID`. The web
+  login page (`apps/web/components/google-sign-in-button.tsx`) renders
+  Google's own Sign In With Google button via the Google Identity
+  Services script and posts the resulting ID token to `POST
+  /api/v1/auth/google`, which returns the same JWT pair as OTP login.
+  Controlled by `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — the button doesn't
+  render if that's unset. Mobile doesn't have a native equivalent yet
+  (would need `expo-auth-session`/Google's native SDKs, a separate
+  effort from the web-only GIS flow).
 - **Email/Phone OTP** (`app/services/otp_service.py`): a hashed,
   single-use, rate-limited one-time code stored in Redis with a 5-minute
   TTL and a 5-attempt cap. Delivery goes through the swappable

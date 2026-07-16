@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { apiClient } from "@/lib/api/client";
 import type { ApiAuthResponse } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -17,6 +18,16 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>("request");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+
+  const googleLogin = useMutation({
+    mutationFn: (idToken: string) =>
+      apiClient.post<ApiAuthResponse>("/auth/google", { id_token: idToken }),
+    onSuccess: (response) => {
+      if (!response.data) return;
+      setSession(response.data.user, response.data.tokens);
+      router.push("/onboarding");
+    },
+  });
 
   const requestOtp = useMutation({
     mutationFn: () => apiClient.post<{ status: string }>("/auth/otp/request", { email }),
@@ -43,6 +54,21 @@ export default function LoginPage() {
       </div>
 
       {step === "request" ? (
+        <div className="flex flex-col gap-6">
+          <GoogleSignInButton onCredential={(idToken) => googleLogin.mutate(idToken)} />
+
+          {googleLogin.isError && (
+            <p className="text-sm text-red-500">
+              Google sign-in failed. Please try again.
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-border" />
+            or
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -76,6 +102,7 @@ export default function LoginPage() {
             </p>
           )}
         </form>
+        </div>
       ) : (
         <form
           className="flex flex-col gap-4"

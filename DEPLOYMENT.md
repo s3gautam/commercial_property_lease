@@ -90,6 +90,13 @@ missing before this should hold real user data.
    Next.js framework — no custom build/install command needed.
 3. Set environment variable `NEXT_PUBLIC_API_URL` to
    `https://<your-railway-domain>/api/v1`.
+   - For the "Continue with Google" button to appear, also set
+     `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the same OAuth client ID you put in
+     the backend's `GOOGLE_CLIENT_ID`, and add your Vercel domain (e.g.
+     `https://your-app.vercel.app`) as an **Authorized JavaScript origin**
+     on that OAuth client in the
+     [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+     Leave it unset to hide the button (OTP login still works).
 4. Deploy. Vercel assigns a domain (or attach a custom one).
 5. **Go back to Railway** and set `CORS_ALLOWED_ORIGINS` to this Vercel
    domain (step 1.4 above) — the backend won't accept requests from the
