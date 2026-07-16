@@ -1,6 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeft,
+  IndianRupee,
+  MapPin,
+  MessagesSquare,
+  Ruler,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
@@ -14,6 +23,13 @@ const rentFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+const STATUS_STYLES: Record<string, string> = {
+  listed: "bg-success/15 text-success",
+  draft: "bg-warning/15 text-warning",
+  leased: "bg-accent/15 text-accent",
+  archived: "bg-muted-foreground/15 text-muted-foreground",
+};
+
 export default function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
 
@@ -24,19 +40,19 @@ export default function PropertyDetailPage() {
 
   if (propertyQuery.isLoading) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <div className="h-8 w-2/3 animate-pulse rounded bg-black/5 dark:bg-white/5" />
-        <div className="mt-4 h-48 animate-pulse rounded-lg bg-black/5 dark:bg-white/5" />
+      <main className="mx-auto max-w-3xl px-6 py-14">
+        <div className="h-8 w-2/3 animate-pulse rounded-lg bg-surface-2" />
+        <div className="mt-4 h-48 animate-pulse rounded-2xl bg-surface-2" />
       </main>
     );
   }
 
   if (propertyQuery.isError || !propertyQuery.data?.data) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-12">
+      <main className="mx-auto max-w-3xl px-6 py-14">
         <p className="text-muted-foreground">
           We couldn&apos;t find that property.{" "}
-          <Link href="/properties" className="underline underline-offset-4">
+          <Link href="/properties" className="text-accent underline underline-offset-4">
             Back to browse
           </Link>
         </p>
@@ -47,29 +63,57 @@ export default function PropertyDetailPage() {
   const property = propertyQuery.data.data;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/properties" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-        ← Back to browse
+    <main className="mx-auto max-w-3xl px-6 py-14">
+      <Link
+        href="/properties"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to browse
       </Link>
 
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight">{property.title}</h1>
-      <p className="mt-1 text-muted-foreground">
-        {property.address}, {property.city}, {property.state}, {property.country}
-      </p>
-
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Stat label="Monthly rent" value={`${rentFormatter.format(property.monthly_rent)}/mo`} />
-        <Stat label="Area" value={`${property.area_sqft.toLocaleString()} sqft`} />
-        <Stat label="Status" value={property.status} />
+      <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">{property.title}</h1>
+          <p className="mt-1.5 flex items-center gap-1.5 text-muted-foreground">
+            <MapPin className="h-4 w-4" strokeWidth={2} />
+            {property.address}, {property.city}, {property.state}, {property.country}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium capitalize ${
+            STATUS_STYLES[property.status] ?? STATUS_STYLES.draft
+          }`}
+        >
+          {property.status}
+        </span>
       </div>
 
-      <p className="mt-8 whitespace-pre-line leading-relaxed">{property.description}</p>
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Stat
+          icon={IndianRupee}
+          label="Monthly rent"
+          value={`${rentFormatter.format(property.monthly_rent)}/mo`}
+          accent
+        />
+        <Stat icon={Ruler} label="Area" value={`${property.area_sqft.toLocaleString()} sqft`} />
+        <Stat icon={MapPin} label="City" value={property.city} />
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-border bg-surface p-6 shadow-soft">
+        <h2 className="font-medium">About this space</h2>
+        <p className="mt-2 whitespace-pre-line leading-relaxed text-muted-foreground">
+          {property.description}
+        </p>
+      </div>
 
       <VerificationSection propertyId={property.id} />
 
-      <section className="mt-4 rounded-lg border border-dashed border-border p-6">
-        <h2 className="font-medium">Chat with landlord</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <section className="mt-5 rounded-2xl border border-dashed border-border p-6">
+        <div className="flex items-center gap-2">
+          <MessagesSquare className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+          <h2 className="font-medium">Chat with landlord</h2>
+        </div>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Chat threads are not implemented yet — this listing will let you message the landlord
           directly once that lands.
         </p>
@@ -99,25 +143,24 @@ function VerificationSection({ propertyId }: { propertyId: string }) {
   const report = reportQuery.data?.data;
 
   return (
-    <section className="mt-10 rounded-lg border border-border p-6">
-      <h2 className="font-medium">AI Verification Report</h2>
+    <section className="mt-5 rounded-2xl border border-border bg-surface p-6 shadow-soft">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-accent" strokeWidth={2} />
+        <h2 className="font-medium">AI Verification Report</h2>
+      </div>
 
       {reportQuery.isLoading && (
-        <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+        <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-surface-2" />
       )}
 
       {report ? (
-        <div className="mt-2">
-          <p className="text-sm leading-relaxed">{report.summary}</p>
-          {report.risk_score !== null && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Risk score: <span className="font-medium">{report.risk_score}/100</span>
-            </p>
-          )}
+        <div className="mt-3">
+          <p className="text-sm leading-relaxed text-muted-foreground">{report.summary}</p>
+          {report.risk_score !== null && <RiskGauge score={report.risk_score} />}
         </div>
       ) : (
         !reportQuery.isLoading && (
-          <div className="mt-2">
+          <div className="mt-3">
             <p className="text-sm text-muted-foreground">
               No verification report yet for this listing.
             </p>
@@ -126,20 +169,21 @@ function VerificationSection({ propertyId }: { propertyId: string }) {
                 type="button"
                 onClick={() => generate.mutate()}
                 disabled={generate.isPending}
-                className="mt-3 rounded-md border border-border px-3 py-1.5 text-sm disabled:opacity-50"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-gradient px-4 py-2 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.03] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
               >
+                <Sparkles className="h-3.5 w-3.5" />
                 {generate.isPending ? "Generating…" : "Generate verification report"}
               </button>
             ) : (
               <p className="mt-2 text-sm">
-                <Link href="/login" className="underline underline-offset-4">
+                <Link href="/login" className="text-accent underline underline-offset-4">
                   Log in
                 </Link>{" "}
                 to generate a verification report.
               </p>
             )}
             {generate.isError && (
-              <p className="mt-2 text-sm text-red-500">
+              <p className="mt-2 text-sm text-danger">
                 Couldn&apos;t generate a report right now. Please try again.
               </p>
             )}
@@ -150,11 +194,44 @@ function VerificationSection({ propertyId }: { propertyId: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function RiskGauge({ score }: { score: number }) {
+  const clamped = Math.min(100, Math.max(0, score));
+  const tone = clamped < 34 ? "bg-success" : clamped < 67 ? "bg-warning" : "bg-danger";
+
   return (
-    <div className="rounded-lg border border-border p-3">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 font-medium capitalize">{value}</p>
+    <div className="mt-4">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>Risk score</span>
+        <span className="font-medium text-foreground">{clamped}/100</span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+        <div
+          className={`h-full rounded-full ${tone} transition-all duration-700`}
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: typeof MapPin;
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+        {label}
+      </div>
+      <p className={`mt-1.5 font-semibold capitalize ${accent ? "text-gradient" : ""}`}>{value}</p>
     </div>
   );
 }

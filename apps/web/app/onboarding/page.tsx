@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Building } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -47,65 +48,70 @@ export default function OnboardingPage() {
   if (!user) return null;
 
   return (
-    <main className="mx-auto flex max-w-sm flex-col gap-6 px-6 py-16">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Create your profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tell us a bit about your business so landlords know who they&apos;re leasing to.
-        </p>
-      </div>
-
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          saveProfile.mutate();
-        }}
-      >
-        <label className="flex flex-col gap-1.5 text-sm">
-          Company name
-          <input
-            value={companyName}
-            onChange={(event) => setCompanyName(event.target.value)}
-            className="rounded-md border border-border bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-foreground/20"
-            placeholder="Acme Corp"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5 text-sm">
-          Business type
-          <input
-            value={businessType}
-            onChange={(event) => setBusinessType(event.target.value)}
-            className="rounded-md border border-border bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-foreground/20"
-            placeholder="Retail, Office, Restaurant…"
-          />
-        </label>
-
-        <button
-          type="submit"
-          disabled={saveProfile.isPending}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity disabled:opacity-50"
-        >
-          {saveProfile.isPending ? "Saving…" : "Save and continue"}
-        </button>
-
-        {saveProfile.isError && (
-          <p className="text-sm text-red-500">
-            {saveProfile.error instanceof ApiError
-              ? saveProfile.error.message
-              : "Something went wrong. Please try again."}
+    <main className="bg-mesh flex min-h-[calc(100vh-65px)] items-center justify-center px-6 py-16">
+      <div className="animate-fade-up w-full max-w-sm rounded-3xl border border-border bg-surface p-8 shadow-card">
+        <div className="mb-7 flex flex-col items-center text-center">
+          <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-gradient text-white shadow-glow">
+            <Building className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Create your profile</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Tell us a bit about your business so landlords know who they&apos;re leasing to.
           </p>
-        )}
+        </div>
 
-        <button
-          type="button"
-          onClick={() => router.push("/properties")}
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveProfile.mutate();
+          }}
         >
-          Skip for now
-        </button>
-      </form>
+          <label className="flex flex-col gap-1.5 text-sm">
+            Company name
+            <input
+              value={companyName}
+              onChange={(event) => setCompanyName(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-shadow focus:shadow-glow"
+              placeholder="Acme Corp"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm">
+            Business type
+            <input
+              value={businessType}
+              onChange={(event) => setBusinessType(event.target.value)}
+              className="rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-shadow focus:shadow-glow"
+              placeholder="Retail, Office, Restaurant…"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={saveProfile.isPending}
+            className="rounded-xl bg-accent-gradient px-4 py-2.5 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+          >
+            {saveProfile.isPending ? "Saving…" : "Save and continue"}
+          </button>
+
+          {saveProfile.isError && (
+            <p className="text-center text-sm text-danger">
+              {saveProfile.error instanceof ApiError
+                ? saveProfile.error.message
+                : "Something went wrong. Please try again."}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => router.push("/properties")}
+            className="text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+          >
+            Skip for now
+          </button>
+        </form>
+      </div>
     </main>
   );
 }

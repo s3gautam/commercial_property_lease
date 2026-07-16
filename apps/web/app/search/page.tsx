@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import { MapPin, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -24,71 +25,82 @@ export default function SearchPage() {
   const results = search.data?.data;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">AI Search</h1>
-        <p className="mt-1 text-muted-foreground">
-          Describe the space you need in plain language.
-        </p>
-      </div>
-
-      <form
-        className="flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (query.trim()) search.mutate(query);
-        }}
-      >
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="e.g. office space in Austin under $5000"
-          className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-foreground/20"
-        />
-        <button
-          type="submit"
-          disabled={search.isPending || !query.trim()}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-        >
-          {search.isPending ? "Searching…" : "Search"}
-        </button>
-      </form>
-
-      {search.isError && (
-        <p className="mt-6 text-sm text-red-500">
-          Something went wrong running that search. Please try again.
-        </p>
-      )}
-
-      {results && (
-        <div className="mt-8">
-          {results.criteria.explanation && (
-            <p className="mb-6 text-sm text-muted-foreground">{results.criteria.explanation}</p>
-          )}
-
-          {results.properties.length === 0 ? (
-            <p className="text-muted-foreground">No properties matched that search.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {results.properties.map((property) => (
-                <Link
-                  key={property.id}
-                  href={`/properties/${property.id}`}
-                  className="flex flex-col gap-2 rounded-lg border border-border p-4 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                >
-                  <h2 className="font-medium">{property.title}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {property.city}, {property.state}
-                  </p>
-                  <p className="text-sm font-medium">
-                    {rentFormatter.format(property.monthly_rent)}/mo
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
+    <main className="bg-mesh min-h-[calc(100vh-65px)] px-6 py-14">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-8 text-center">
+          <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-gradient text-white shadow-glow">
+            <Sparkles className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          <h1 className="text-3xl font-semibold tracking-tight">AI Search</h1>
+          <p className="mt-1.5 text-muted-foreground">
+            Describe the space you need in plain language.
+          </p>
         </div>
-      )}
+
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (query.trim()) search.mutate(query);
+          }}
+        >
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="e.g. office space in Austin under $5000"
+            className="flex-1 rounded-full border border-border bg-surface px-4 py-3 text-sm shadow-soft outline-none transition-shadow focus:shadow-glow"
+          />
+          <button
+            type="submit"
+            disabled={search.isPending || !query.trim()}
+            className="rounded-full bg-accent-gradient px-5 py-3 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {search.isPending ? "Searching…" : "Search"}
+          </button>
+        </form>
+
+        {search.isError && (
+          <p className="mt-6 text-center text-sm text-danger">
+            Something went wrong running that search. Please try again.
+          </p>
+        )}
+
+        {results && (
+          <div className="mt-10">
+            {results.criteria.explanation && (
+              <p className="mb-6 rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-muted-foreground shadow-soft">
+                {results.criteria.explanation}
+              </p>
+            )}
+
+            {results.properties.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+                No properties matched that search.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {results.properties.map((property) => (
+                  <Link
+                    key={property.id}
+                    href={`/properties/${property.id}`}
+                    className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-card-hover"
+                  >
+                    <h2 className="font-medium tracking-tight">{property.title}</h2>
+                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5" strokeWidth={2} />
+                      {property.city}, {property.state}
+                    </p>
+                    <p className="font-semibold text-gradient">
+                      {rentFormatter.format(property.monthly_rent)}
+                      <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
