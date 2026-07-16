@@ -42,6 +42,11 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
 
+    # Gates GET /api/v1/admin/seed-properties, a dev/test convenience for
+    # inserting dummy listings. Unset (default) disables the endpoint
+    # entirely - it 404s regardless of what token is passed.
+    admin_seed_token: str = ""
+
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
     s3_bucket: str = ""

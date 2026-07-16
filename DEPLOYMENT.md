@@ -120,9 +120,20 @@ missing before this should hold real user data.
 ### Seeding sample properties
 
 There's no admin UI for listings yet, so the browse page is empty on a
-fresh deploy. `services/backend/scripts/seed_properties.py` inserts 35
-dummy `LISTED` properties for manual testing. Run it against Railway with
-the [Railway CLI](https://docs.railway.com/guides/cli):
+fresh deploy. Two ways to insert 35 dummy `LISTED` properties:
+
+**From a browser (no CLI/laptop needed)**: set `ADMIN_SEED_TOKEN` on the
+Railway backend service to any random value, then visit
+`https://<railway-domain>/api/v1/admin/seed-properties?token=<that value>`
+once. It returns `{"success": true, "data": {"seeded": 35}}`. This hits
+`GET /api/v1/admin/seed-properties` (`app/api/v1/admin.py`), which 404s
+unconditionally if `ADMIN_SEED_TOKEN` is unset or the token doesn't
+match — unset the variable again afterward so the endpoint goes back to
+404ing for everyone, including you.
+
+**From the CLI**, if you have the repo cloned locally:
+`services/backend/scripts/seed_properties.py` does the same thing via the
+[Railway CLI](https://docs.railway.com/guides/cli):
 
 ```bash
 npm i -g @railway/cli
