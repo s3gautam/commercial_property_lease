@@ -3,6 +3,13 @@ import type { ApiResponse } from "@proplease/types";
 export interface ApiClientConfig {
   baseUrl: string;
   getAccessToken?: () => string | null | Promise<string | null>;
+  /**
+   * Called once when a request comes back 401. Should attempt a token
+   * refresh and return the new access token, or null if refresh isn't
+   * possible/failed (e.g. no refresh token, or it's also expired). The
+   * failed request is retried once with the new token if one is returned.
+   */
+  onUnauthorized?: () => Promise<string | null>;
 }
 
 export class ApiError extends Error {
@@ -30,12 +37,17 @@ export class ApiClient {
       headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const response = await fetch(`${this.config.baseUrl}${path}`, {
-      ...init,
-      headers,
-    });
+    let response = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers });
+    let body = (await response.json()) as ApiResponse<TData>;
 
-    const body = (await response.json()) as ApiResponse<TData>;
+    if (response.status === 401 && token && this.config.onUnauthorized) {
+      const newToken = await this.config.onUnauthorized();
+      if (newToken) {
+        headers.set("Authorization", `Bearer ${newToken}`);
+        response = await fetch(`${this.config.baseUrl}${path}`, { ...init, headers });
+        body = (await response.json()) as ApiResponse<TData>;
+      }
+    }
 
     if (!response.ok || !body.success) {
       throw new ApiError(

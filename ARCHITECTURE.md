@@ -169,6 +169,14 @@ contracts, and design tokens have one source of truth.
   store (`apps/web/lib/store/auth-store.ts`); the `ApiClient`'s
   `getAccessToken` reads from it directly rather than components passing
   tokens around.
+- `ApiClient` takes an `onUnauthorized` callback, called once on a 401
+  response: `apps/web`/`apps/mobile`'s wiring of it calls `POST
+  /api/v1/auth/refresh` with the stored refresh token, updates the auth
+  store, and the original request is retried once with the new access
+  token. Without this, every logged-in user would start seeing
+  generic "couldn't send/load" errors the moment their 15-minute access
+  token expired, with no way to recover short of logging out and back
+  in. Concurrent 401s dedupe behind a single in-flight refresh call.
 - All server data fetching goes through TanStack Query
   (`app/providers.tsx` wraps the app in a `QueryClientProvider`) — no
   ad-hoc `useEffect` + `fetch`.
