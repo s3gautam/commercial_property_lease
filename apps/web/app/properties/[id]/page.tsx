@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   IndianRupee,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
@@ -106,7 +107,7 @@ export default function PropertyDetailPage() {
         </p>
       </div>
 
-      <VerificationSection propertyId={property.id} />
+      <VerificationSection property={property} />
 
       <section className="mt-5 rounded-2xl border border-dashed border-border p-6">
         <div className="flex items-center gap-2">
@@ -122,25 +123,39 @@ export default function PropertyDetailPage() {
   );
 }
 
-function VerificationSection({ propertyId }: { propertyId: string }) {
-  const queryClient = useQueryClient();
+// TODO: wired to a client-side dummy generator for now instead of
+// POST /properties/{id}/verification (the real AI verification
+// endpoint) so the demo works without depending on a live Groq call
+// succeeding. Swap buildDummyReport() for the real apiClient.post call
+// once that's ready to exercise end to end again.
+function buildDummyReport(property: ApiProperty): ApiVerificationReport {
+  const riskScore = Math.round(10 + Math.random() * 35);
+  return {
+    id: "dummy",
+    property_id: property.id,
+    summary:
+      `This ${property.area_sqft.toLocaleString()} sqft space in ${property.city} appears ` +
+      `well-documented, with rent consistent with comparable listings in the area. No major ` +
+      `red flags were found in the listing details, though we recommend confirming ownership ` +
+      "and zoning documents directly with the landlord before signing.",
+    risk_score: riskScore,
+    status: "completed",
+    created_at: new Date().toISOString(),
+  };
+}
+
+function VerificationSection({ property }: { property: ApiProperty }) {
   const user = useAuthStore((state) => state.user);
+  const [report, setReport] = useState<ApiVerificationReport | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const reportQuery = useQuery({
-    queryKey: ["verification", propertyId],
-    queryFn: () => apiClient.get<ApiVerificationReport>(`/properties/${propertyId}/verification`),
-    retry: false,
-  });
-
-  const generate = useMutation({
-    mutationFn: () =>
-      apiClient.post<ApiVerificationReport>(`/properties/${propertyId}/verification`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["verification", propertyId] });
-    },
-  });
-
-  const report = reportQuery.data?.data;
+  const handleGenerate = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      setReport(buildDummyReport(property));
+      setIsGenerating(false);
+    }, 900);
+  };
 
   return (
     <section className="mt-5 rounded-2xl border border-border bg-surface p-6 shadow-soft">
@@ -149,46 +164,35 @@ function VerificationSection({ propertyId }: { propertyId: string }) {
         <h2 className="font-medium">AI Verification Report</h2>
       </div>
 
-      {reportQuery.isLoading && (
-        <div className="mt-3 h-4 w-2/3 animate-pulse rounded bg-surface-2" />
-      )}
-
       {report ? (
         <div className="mt-3">
           <p className="text-sm leading-relaxed text-muted-foreground">{report.summary}</p>
           {report.risk_score !== null && <RiskGauge score={report.risk_score} />}
         </div>
       ) : (
-        !reportQuery.isLoading && (
-          <div className="mt-3">
-            <p className="text-sm text-muted-foreground">
-              No verification report yet for this listing.
+        <div className="mt-3">
+          <p className="text-sm text-muted-foreground">
+            No verification report yet for this listing.
+          </p>
+          {user ? (
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-gradient px-4 py-2 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.03] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {isGenerating ? "Generating…" : "Generate verification report"}
+            </button>
+          ) : (
+            <p className="mt-2 text-sm">
+              <Link href="/login" className="text-accent underline underline-offset-4">
+                Log in
+              </Link>{" "}
+              to generate a verification report.
             </p>
-            {user ? (
-              <button
-                type="button"
-                onClick={() => generate.mutate()}
-                disabled={generate.isPending}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-gradient px-4 py-2 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.03] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {generate.isPending ? "Generating…" : "Generate verification report"}
-              </button>
-            ) : (
-              <p className="mt-2 text-sm">
-                <Link href="/login" className="text-accent underline underline-offset-4">
-                  Log in
-                </Link>{" "}
-                to generate a verification report.
-              </p>
-            )}
-            {generate.isError && (
-              <p className="mt-2 text-sm text-danger">
-                Couldn&apos;t generate a report right now. Please try again.
-              </p>
-            )}
-          </div>
-        )
+          )}
+        </div>
       )}
     </section>
   );

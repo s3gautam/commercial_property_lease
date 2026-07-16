@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
+import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
 
 import { Providers } from "./providers";
@@ -22,8 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body className="bg-background font-sans text-foreground antialiased">
         <Providers>
-          <Nav />
-          {children}
+          <div className="flex min-h-screen flex-col">
+            <Nav />
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </div>
         </Providers>
       </body>
     </html>

@@ -1,6 +1,8 @@
 import { FileCheck2, MessagesSquare, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
+import { FaqSection } from "@/components/faq-section";
+
 const FEATURES = [
   {
     icon: Search,
@@ -88,6 +90,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <FaqSection />
     </main>
   );
 }
