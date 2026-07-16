@@ -285,8 +285,16 @@ None known.
   request/response only — no `ChatThread`/`Message` persistence (see
   ARCHITECTURE.md's AI Layer section for why), so a conversation
   doesn't survive a page refresh, and there's no real landlord on the
-  other end reading these — every reply is AI-generated in character.
+  other end reading these — every reply is AI-generated in character,
+  grounded only in the listing's fields, amenities, and nearby
+  landmarks (explicitly instructed not to invent anything else).
   `apps/mobile` doesn't have this UI yet.
+- `Property.amenities`/`Property.nearby_landmarks`
+  (`app/services/property_facts.py`) are deterministic, not real data —
+  there's no admin UI to enter amenities and no geocoding/places
+  integration for real distances, so both are derived from the
+  property's id/city. Same caveat as the dummy photos: consistent
+  per-listing, not actually true.
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;

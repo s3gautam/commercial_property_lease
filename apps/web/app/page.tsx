@@ -1,7 +1,10 @@
+"use client";
+
 import { FileCheck2, MessagesSquare, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { FaqSection } from "@/components/faq-section";
+import { useAuthStore } from "@/lib/store/auth-store";
 
 const FEATURES = [
   {
@@ -27,6 +30,9 @@ const FEATURES = [
 ];
 
 export default function HomePage() {
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
   return (
     <main>
       <section className="bg-mesh relative overflow-hidden">
@@ -62,12 +68,14 @@ export default function HomePage() {
             >
               Browse properties
             </Link>
-            <Link
-              href="/login"
-              className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium shadow-soft transition-colors hover:bg-surface-2"
-            >
-              Log in
-            </Link>
+            {hasHydrated && (
+              <Link
+                href={user ? "/onboarding" : "/login"}
+                className="rounded-full border border-border bg-surface px-6 py-3 text-sm font-medium shadow-soft transition-colors hover:bg-surface-2"
+              >
+                {user ? "My profile" : "Log in"}
+              </Link>
+            )}
           </div>
         </div>
       </section>

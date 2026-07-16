@@ -15,7 +15,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { AmenitiesSection } from "@/components/amenities-section";
 import { ChatWithLandlord } from "@/components/chat-with-landlord";
+import { NearbySection } from "@/components/nearby-section";
 import { RecommendedProperties } from "@/components/recommended-properties";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
@@ -121,6 +123,10 @@ export default function PropertyDetailPage() {
           {property.description}
         </p>
       </div>
+
+      <AmenitiesSection amenities={property.amenities} />
+
+      <NearbySection landmarks={property.nearby_landmarks} />
 
       <h2 className="mt-8 flex items-center gap-2 font-medium">
         <MapPin className="h-4 w-4 text-accent" strokeWidth={2} />

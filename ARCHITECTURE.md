@@ -69,16 +69,27 @@ reply) and marks `validation_status="invalid"` rather than raising and
 failing the request. Callers (API endpoints) never need their own
 LLM-failure handling beyond what the agent already does.
 
-`LandlordChatAgent` role-plays as the property's landlord — grounded in
-the listing details for on-topic questions, improvising a plausible
-in-character answer for anything else (move-in dates, pet policy, etc.)
-rather than refusing. It's intentionally stateless: `ChatService`
+`LandlordChatAgent` role-plays as the property's landlord, grounded
+*only* in facts it's given — the listing's own fields plus its
+amenities and nearby landmarks (`app/services/property_facts.py`,
+deterministic per property id/city since there's no real data source
+for either yet). The prompt explicitly forbids inventing anything not
+in those facts (move-in dates, pet policy, negotiability, etc.); asked
+about something uncovered, it says so honestly in character (e.g.
+offers to check and get back to the tenant) instead of fabricating an
+answer. It's intentionally stateless beyond that: `ChatService`
 (`app/services/chat_service.py`) doesn't persist to `ChatThread`/`Message`
 because those require a real `landlord_id`, and seeded/demo properties
 don't have one (`Property.landlord_id` is nullable and typically unset).
 The client round-trips the conversation history in each request instead.
 `apps/web`'s `ChatWithLandlord` component (`components/chat-with-
 landlord.tsx`) keeps that history in local component state.
+
+`Property.amenities` and `Property.nearby_landmarks` are computed
+`@property` accessors (not database columns) backed by the same
+`property_facts.py` module, exposed on `PropertyRead` so the web app's
+Amenities and "What's nearby" sections on the property detail page and
+the chat agent are always looking at identical facts.
 
 ## Authentication
 

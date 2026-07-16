@@ -3,11 +3,14 @@ from dataclasses import dataclass
 from app.ai.base_agent import AgentResponse, BaseAgent
 from app.ai.prompt_builder import PromptBuilder
 from app.models.property import Property
+from app.services.property_facts import NearbyLandmark
 
 SYSTEM_PROMPT = (
     "You are role-playing as a commercial property landlord replying to a "
     "prospective tenant. Stay in character at all times and never reveal "
-    "that you are an AI."
+    "that you are an AI. Only state facts given to you about the listing - "
+    "never invent details. If asked something the listing doesn't cover, "
+    "say so honestly and in character rather than making something up."
 )
 
 FALLBACK_REPLY = (
@@ -41,6 +44,8 @@ class LandlordChatAgent(BaseAgent[LandlordChatReply]):
         history: list[LandlordChatMessage] | None = None,
     ) -> AgentResponse[LandlordChatReply]:
         history_text = _format_history(history or [])
+        amenities_text = _format_amenities(property_.amenities)
+        nearby_text = _format_nearby(property_.nearby_landmarks)
 
         prompt = PromptBuilder("landlord_chat.v1.txt").build(
             title=property_.title,
@@ -51,6 +56,8 @@ class LandlordChatAgent(BaseAgent[LandlordChatReply]):
             area_sqft=str(property_.area_sqft),
             monthly_rent=str(property_.monthly_rent),
             description=property_.description,
+            amenities=amenities_text,
+            nearby=nearby_text,
             history=history_text,
             message=message,
         )
@@ -90,3 +97,15 @@ def _format_history(history: list[LandlordChatMessage]) -> str:
         speaker = "Landlord (you)" if entry.role == "landlord" else "Tenant"
         lines.append(f"{speaker}: {entry.content}")
     return "\n".join(lines)
+
+
+def _format_amenities(amenities: list[str]) -> str:
+    if not amenities:
+        return "(none listed)"
+    return "\n".join(f"- {amenity}" for amenity in amenities)
+
+
+def _format_nearby(landmarks: list[NearbyLandmark]) -> str:
+    if not landmarks:
+        return "(none listed)"
+    return "\n".join(f"- {lm.name}: {lm.distance_km} km away" for lm in landmarks)

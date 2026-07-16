@@ -6,6 +6,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.property import PropertyStatus
 
 
+class NearbyLandmarkRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    label: str
+    name: str
+    distance_km: float
+
+
 class PropertyRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,6 +27,8 @@ class PropertyRead(BaseModel):
     area_sqft: float
     monthly_rent: float
     status: PropertyStatus
+    amenities: list[str]
+    nearby_landmarks: list[NearbyLandmarkRead]
     created_at: datetime
     updated_at: datetime
 

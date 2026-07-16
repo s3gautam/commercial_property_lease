@@ -26,6 +26,12 @@ export interface ApiAuthResponse {
   tokens: ApiTokens;
 }
 
+export interface ApiNearbyLandmark {
+  label: string;
+  name: string;
+  distance_km: number;
+}
+
 export interface ApiProperty {
   id: string;
   title: string;
@@ -37,6 +43,8 @@ export interface ApiProperty {
   area_sqft: number;
   monthly_rent: number;
   status: "draft" | "listed" | "leased" | "archived";
+  amenities: string[];
+  nearby_landmarks: ApiNearbyLandmark[];
   created_at: string;
   updated_at: string;
 }

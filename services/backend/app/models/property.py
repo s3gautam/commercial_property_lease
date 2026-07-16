@@ -5,6 +5,7 @@ from sqlalchemy import Enum, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import TimestampedModel
+from app.services.property_facts import NearbyLandmark, get_amenities, get_nearby_landmarks
 
 
 class PropertyStatus(str, enum.Enum):
@@ -44,6 +45,16 @@ class Property(TimestampedModel):
     documents: Mapped[list["PropertyDocument"]] = relationship(
         back_populates="property", cascade="all, delete-orphan"
     )
+
+    @property
+    def amenities(self) -> list[str]:
+        """Deterministic, not stored - see app.services.property_facts."""
+        return get_amenities(self.id)
+
+    @property
+    def nearby_landmarks(self) -> list[NearbyLandmark]:
+        """Deterministic, not stored - see app.services.property_facts."""
+        return get_nearby_landmarks(self.id, self.city)
 
 
 class PropertyImage(TimestampedModel):
