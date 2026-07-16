@@ -16,6 +16,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { ChatWithLandlord } from "@/components/chat-with-landlord";
+import { RecommendedProperties } from "@/components/recommended-properties";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
@@ -138,6 +139,8 @@ export default function PropertyDetailPage() {
       <VerificationSection property={property} />
 
       <ChatWithLandlord propertyId={property.id} />
+
+      <RecommendedProperties current={property} />
     </main>
   );
 }
