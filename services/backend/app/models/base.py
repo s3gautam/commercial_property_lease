@@ -14,6 +14,10 @@ class TimestampedModel(Base):
     """Base class for tables requiring audit columns per project standard."""
 
     __abstract__ = True
+    # Forces server-side defaults (created_at/updated_at) to be fetched via
+    # RETURNING on both INSERT and UPDATE, avoiding a lazy-load of expired
+    # attributes outside the async context after commit.
+    __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -31,6 +35,7 @@ class ImmutableModel(Base):
     updated after creation, so no updated_at/updated_by columns apply."""
 
     __abstract__ = True
+    __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

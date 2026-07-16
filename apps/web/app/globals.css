@@ -5,12 +5,16 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #f5f5f5;
+    --muted-foreground: #9ca3af;
+    --border: #27272a;
   }
 }
 

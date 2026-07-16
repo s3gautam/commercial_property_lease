@@ -62,9 +62,43 @@ POST /api/v1/auth/refresh
 where `tokens` is `{ access_token, refresh_token, token_type }`.
 `GET /auth/me` requires `Authorization: Bearer <access_token>`.
 
+| Method | Path                       | Description                                     | Auth required |
+| ------ | --------------------------- | -------------------------------------------------- | -------------- |
+| GET    | `/api/v1/properties`         | Browse listed properties (paginated, city filter)  | No             |
+| GET    | `/api/v1/properties/{id}`    | Get a single listed property                        | No             |
+| GET    | `/api/v1/tenant-profile/me`  | Get the authenticated user's tenant profile         | Yes (Bearer)   |
+| PUT    | `/api/v1/tenant-profile/me`  | Create or update the authenticated user's profile   | Yes (Bearer)   |
+
+### Property browse/detail shapes
+
+```
+GET /api/v1/properties?page=1&page_size=20&city=Austin
+
+-> data: PropertyRead[]
+-> meta: { page, page_size, total }
+
+GET /api/v1/properties/{id}
+-> data: PropertyRead
+```
+
+Only properties with `status == "listed"` are visible through these
+endpoints — `draft`/`archived`/`leased` properties 404 for unauthenticated
+browse (there is no Landlord Portal yet to manage visibility per-owner).
+
+### Tenant profile shape
+
+```
+PUT /api/v1/tenant-profile/me
+{ "company_name": "Acme Corp", "business_type": "Retail" }
+
+-> data: { id, user_id, company_name, business_type, created_at, updated_at }
+```
+
+`PUT` upserts — safe to call again to edit an existing profile.
+`GET` 404s if the authenticated user hasn't created a profile yet.
+
 ## Planned Endpoints (later phases)
 
-- `/api/v1/properties` — search, filter, paginate commercial properties
 - `/api/v1/properties/{id}/verification` — AI verification report
 - `/api/v1/chat/*` — tenant/landlord chat threads and messages
 - `/api/v1/kyc/*` — tenant KYC verification

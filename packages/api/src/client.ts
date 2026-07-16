@@ -56,6 +56,10 @@ export class ApiClient {
     return this.request<TData>(path, { method: "POST", body: JSON.stringify(payload) });
   }
 
+  put<TData>(path: string, payload: unknown): Promise<ApiResponse<TData>> {
+    return this.request<TData>(path, { method: "PUT", body: JSON.stringify(payload) });
+  }
+
   patch<TData>(path: string, payload: unknown): Promise<ApiResponse<TData>> {
     return this.request<TData>(path, { method: "PATCH", body: JSON.stringify(payload) });
   }

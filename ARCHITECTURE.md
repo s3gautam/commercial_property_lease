@@ -83,6 +83,28 @@ All outbound HTTP (Groq, OAuth providers, object storage) goes through
 consumed by both `apps/web` and `apps/mobile` so business rules, API
 contracts, and design tokens have one source of truth.
 
+## Web App Conventions
+
+- `packages/api::ApiClient` is the only thing that calls `fetch`. It's
+  instantiated once per app (`apps/web/lib/api/client.ts`), configured
+  with the API base URL and an access-token getter, and reused everywhere
+  via `apiClient.get/post/put/patch/delete`.
+- Session state (`user`, `tokens`) lives in a single persisted Zustand
+  store (`apps/web/lib/store/auth-store.ts`); the `ApiClient`'s
+  `getAccessToken` reads from it directly rather than components passing
+  tokens around.
+- All server data fetching goes through TanStack Query
+  (`app/providers.tsx` wraps the app in a `QueryClientProvider`) — no
+  ad-hoc `useEffect` + `fetch`.
+- Backend response types are defined locally per app
+  (`apps/web/lib/api/types.ts`) matching the actual JSON shape (currently
+  snake_case, per the backend's Pydantic schemas) rather than force-fit
+  into `packages/types`' camelCase domain types, which are aspirational
+  for future cross-service use. Reconcile these once the shape stabilizes.
+- Routes for steps that depend on a later phase (AI Search, KYC, Lease)
+  render a shared `<ComingSoon />` placeholder rather than mock data or a
+  half-built flow.
+
 ## Extension Points
 
 - New portals (Landlord, Broker, Admin) add new routers/services/repos
