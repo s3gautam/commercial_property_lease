@@ -41,6 +41,35 @@ Application -> Agent -> Prompt Builder -> LLM Gateway -> Groq -> Output Validato
 - Every agent response carries `response`, `confidence`, `latency`, token
   usage, `reasoning_metadata`, and `validation_status`.
 
+## Authentication
+
+Authentication is the first vertical slice through the full stack and is
+the reference example for how future features should be structured:
+
+```
+app/api/v1/auth.py        (routers: parse request, call AuthService, shape response)
+  -> app/services/auth_service.py   (business logic: login, OTP verify, refresh)
+    -> app/repositories/user_repository.py   (data access)
+      -> app/models/user.py::User               (SQLAlchemy model)
+```
+
+Supported login methods, all issuing the same JWT access/refresh pair
+(`app/core/security.py`):
+
+- **Google OAuth** (`app/services/google_oauth.py`): verifies a Google ID
+  token against Google's tokeninfo endpoint (via the centralized HTTP
+  client) and checks the audience matches `GOOGLE_CLIENT_ID`.
+- **Email/Phone OTP** (`app/services/otp_service.py`): a hashed,
+  single-use, rate-limited one-time code stored in Redis with a 5-minute
+  TTL and a 5-attempt cap. Delivery goes through the swappable
+  `NotificationSender` interface (`ConsoleNotificationSender` for now).
+
+`app/api/deps.py::get_current_user` decodes the bearer access token and
+loads the `User` via `UserRepository`, for use as a FastAPI dependency on
+any protected route. `app/core/rate_limit.py::RateLimiter` is a reusable
+Redis-backed dependency applied to the OTP endpoints and available to any
+future route that needs request throttling.
+
 ## SSL / HTTP
 
 All outbound HTTP (Groq, OAuth providers, object storage) goes through
