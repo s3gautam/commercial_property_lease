@@ -1,0 +1,7 @@
+{
+  "name": "@proplease/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": ["tsconfig", "src"],
+  "main": "./src/index.ts"
+}

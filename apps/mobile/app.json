@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "PropLease AI",
+    "slug": "proplease-ai-tenant",
+    "scheme": "proplease",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.proplease.tenant"
+    },
+    "android": {
+      "package": "ai.proplease.tenant"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
