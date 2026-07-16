@@ -49,3 +49,26 @@ export interface ApiTenantProfile {
   created_at: string;
   updated_at: string;
 }
+
+export interface ApiSearchCriteria {
+  city: string | null;
+  max_rent: number | null;
+  min_area_sqft: number | null;
+  keywords: string[];
+  explanation: string;
+}
+
+export interface ApiPropertySearchResponse {
+  criteria: ApiSearchCriteria;
+  properties: ApiProperty[];
+  confidence: number;
+}
+
+export interface ApiVerificationReport {
+  id: string;
+  property_id: string;
+  summary: string;
+  risk_score: number | null;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+}

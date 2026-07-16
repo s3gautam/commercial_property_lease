@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { apiClient } from "@/lib/api/client";
-import type { ApiProperty } from "@/lib/api/types";
+import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
+import { useAuthStore } from "@/lib/store/auth-store";
 
 const rentFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -64,13 +65,7 @@ export default function PropertyDetailPage() {
 
       <p className="mt-8 whitespace-pre-line leading-relaxed">{property.description}</p>
 
-      <section className="mt-10 rounded-lg border border-dashed border-border p-6">
-        <h2 className="font-medium">AI Verification Report</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Coming in Phase 5 (AI Services) — a VerificationAgent will surface risk signals and a
-          confidence score for this listing here.
-        </p>
-      </section>
+      <VerificationSection propertyId={property.id} />
 
       <section className="mt-4 rounded-lg border border-dashed border-border p-6">
         <h2 className="font-medium">Chat with landlord</h2>
@@ -80,6 +75,78 @@ export default function PropertyDetailPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+function VerificationSection({ propertyId }: { propertyId: string }) {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+
+  const reportQuery = useQuery({
+    queryKey: ["verification", propertyId],
+    queryFn: () => apiClient.get<ApiVerificationReport>(`/properties/${propertyId}/verification`),
+    retry: false,
+  });
+
+  const generate = useMutation({
+    mutationFn: () =>
+      apiClient.post<ApiVerificationReport>(`/properties/${propertyId}/verification`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["verification", propertyId] });
+    },
+  });
+
+  const report = reportQuery.data?.data;
+
+  return (
+    <section className="mt-10 rounded-lg border border-border p-6">
+      <h2 className="font-medium">AI Verification Report</h2>
+
+      {reportQuery.isLoading && (
+        <div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-black/5 dark:bg-white/5" />
+      )}
+
+      {report ? (
+        <div className="mt-2">
+          <p className="text-sm leading-relaxed">{report.summary}</p>
+          {report.risk_score !== null && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Risk score: <span className="font-medium">{report.risk_score}/100</span>
+            </p>
+          )}
+        </div>
+      ) : (
+        !reportQuery.isLoading && (
+          <div className="mt-2">
+            <p className="text-sm text-muted-foreground">
+              No verification report yet for this listing.
+            </p>
+            {user ? (
+              <button
+                type="button"
+                onClick={() => generate.mutate()}
+                disabled={generate.isPending}
+                className="mt-3 rounded-md border border-border px-3 py-1.5 text-sm disabled:opacity-50"
+              >
+                {generate.isPending ? "Generating…" : "Generate verification report"}
+              </button>
+            ) : (
+              <p className="mt-2 text-sm">
+                <Link href="/login" className="underline underline-offset-4">
+                  Log in
+                </Link>{" "}
+                to generate a verification report.
+              </p>
+            )}
+            {generate.isError && (
+              <p className="mt-2 text-sm text-red-500">
+                Couldn&apos;t generate a report right now. Please try again.
+              </p>
+            )}
+          </div>
+        )
+      )}
+    </section>
   );
 }
 

@@ -38,6 +38,14 @@ All 13 tables are created by the initial migration
 (`0001_initial_schema`). Its `upgrade()`/`downgrade()` were verified
 end-to-end against a real local PostgreSQL 16 instance.
 
+A second migration (`0002_lease_version_document_text`, Phase 5) added
+`lease_versions.document_text` (nullable `TEXT`) and made
+`lease_versions.document_url` nullable. The AI-drafted lease text
+(`LeaseDraftingAgent`) has nowhere to be uploaded yet — there's no S3
+client wired up despite MinIO being in `docker-compose.yml` — so it's
+stored directly in `document_text` for now. `document_url` will hold a
+real object-storage URL once that pipeline exists.
+
 Notable constraints:
 
 - `users.email`/`users.phone` are both nullable, but a `CHECK` constraint

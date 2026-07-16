@@ -38,8 +38,31 @@ Application -> Agent -> Prompt Builder -> LLM Gateway -> Groq -> Output Validato
   Prompts are never hardcoded inline.
 - `app/ai/gateway.py` is the single module allowed to call an LLM provider
   (Groq today). Swapping providers means changing this file only.
+  `LLMGateway.complete(json_mode=True)` requests Groq's structured JSON
+  output mode for agents that need parseable results.
+- `app/ai/output_validator.py` implements the Output Validator step:
+  `parse_json_response()` tolerates markdown code fences some models wrap
+  JSON in, and `require_keys()` checks the expected shape before an agent
+  trusts the result.
 - Every agent response carries `response`, `confidence`, `latency`, token
   usage, `reasoning_metadata`, and `validation_status`.
+
+### Implemented Agents (`app/ai/agents/`)
+
+| Agent | Input | Output | Used by |
+| --- | --- | --- | --- |
+| `SearchAgent` | free-text query | extracted filters + matching `Property` rows | `GET /api/v1/properties/search` |
+| `VerificationAgent` | a `Property` | `{summary, risk_score}` | `POST/GET /api/v1/properties/{id}/verification` |
+| `LeaseDraftingAgent` | a `Lease` + its `Property` | drafted lease document text | `POST /api/v1/leases/{id}/draft` |
+| `LeaseSummaryAgent` | a lease document's full text | plain-language summary | `POST /api/v1/leases/{id}/summary` |
+
+Every agent's `run()` degrades gracefully on a malformed/unparseable LLM
+response — it falls back to a safe default (e.g. `SearchAgent` falls back
+to raw-keyword search; `VerificationAgent` returns a conservative
+"couldn't verify" summary with a maximal risk score) and marks
+`validation_status="invalid"` rather than raising and failing the
+request. Callers (API endpoints) never need their own LLM-failure
+handling beyond what the agent already does.
 
 ## Authentication
 

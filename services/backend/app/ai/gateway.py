@@ -26,21 +26,27 @@ class LLMGateway:
     def __init__(self, model: str = "llama-3.3-70b-versatile") -> None:
         self._model = model
 
-    async def complete(self, system_prompt: str, user_prompt: str) -> LLMResult:
+    async def complete(
+        self, system_prompt: str, user_prompt: str, json_mode: bool = False
+    ) -> LLMResult:
         settings = get_settings()
         client = get_http_client()
+
+        payload_body: dict[str, object] = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        if json_mode:
+            payload_body["response_format"] = {"type": "json_object"}
 
         started_at = time.perf_counter()
         response = await client.post(
             GROQ_API_URL,
             headers={"Authorization": f"Bearer {settings.groq_api_key}"},
-            json={
-                "model": self._model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            },
+            json=payload_body,
         )
         response.raise_for_status()
         latency_ms = (time.perf_counter() - started_at) * 1000

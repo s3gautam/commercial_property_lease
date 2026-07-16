@@ -45,7 +45,12 @@ class LeaseVersion(TimestampedModel):
         ForeignKey("leases.id", ondelete="CASCADE"), nullable=False, index=True
     )
     version_number: Mapped[int] = mapped_column(nullable=False)
-    document_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    # Nullable because generated drafts aren't uploaded to object storage yet
+    # (no S3 client wired up) — see document_text for the generated text in
+    # the meantime. Once file storage lands, drafts get rendered to a file
+    # and this is populated.
+    document_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    document_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     lease: Mapped["Lease"] = relationship(back_populates="versions")

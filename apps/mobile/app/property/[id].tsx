@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 
 import { apiClient } from "@/lib/api/client";
-import type { ApiProperty } from "@/lib/api/types";
+import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
+import { useAuthStore } from "@/lib/store/auth-store";
 
 const rentFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -56,13 +57,7 @@ export default function PropertyDetailScreen() {
         {property.description}
       </Text>
 
-      <View className="mt-8 rounded-lg border border-dashed border-gray-300 p-4 dark:border-gray-700">
-        <Text className="font-medium text-black dark:text-white">AI Verification Report</Text>
-        <Text className="mt-1 text-gray-500 dark:text-gray-400">
-          Coming in Phase 5 (AI Services) — a VerificationAgent will surface risk signals and a
-          confidence score for this listing here.
-        </Text>
-      </View>
+      <VerificationSection propertyId={property.id} />
 
       <View className="mt-4 rounded-lg border border-dashed border-gray-300 p-4 dark:border-gray-700">
         <Text className="font-medium text-black dark:text-white">Chat with landlord</Text>
@@ -72,6 +67,79 @@ export default function PropertyDetailScreen() {
         </Text>
       </View>
     </ScrollView>
+  );
+}
+
+function VerificationSection({ propertyId }: { propertyId: string }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+
+  const reportQuery = useQuery({
+    queryKey: ["verification", propertyId],
+    queryFn: () => apiClient.get<ApiVerificationReport>(`/properties/${propertyId}/verification`),
+    retry: false,
+  });
+
+  const generate = useMutation({
+    mutationFn: () =>
+      apiClient.post<ApiVerificationReport>(`/properties/${propertyId}/verification`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["verification", propertyId] });
+    },
+  });
+
+  const report = reportQuery.data?.data;
+
+  return (
+    <View className="mt-8 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <Text className="font-medium text-black dark:text-white">AI Verification Report</Text>
+
+      {reportQuery.isLoading && <ActivityIndicator className="mt-2" />}
+
+      {report ? (
+        <View className="mt-2">
+          <Text className="leading-relaxed text-black dark:text-white">{report.summary}</Text>
+          {report.risk_score !== null && (
+            <Text className="mt-2 text-gray-500 dark:text-gray-400">
+              Risk score: {report.risk_score}/100
+            </Text>
+          )}
+        </View>
+      ) : (
+        !reportQuery.isLoading && (
+          <View className="mt-2">
+            <Text className="text-gray-500 dark:text-gray-400">
+              No verification report yet for this listing.
+            </Text>
+            {user ? (
+              <Pressable
+                onPress={() => generate.mutate()}
+                disabled={generate.isPending}
+                className="mt-3 items-center rounded-md border border-gray-200 px-3 py-2 disabled:opacity-50 dark:border-gray-700"
+              >
+                {generate.isPending ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text className="text-black dark:text-white">Generate verification report</Text>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.push("/login")} className="mt-2">
+                <Text className="text-black underline dark:text-white">
+                  Log in to generate a verification report.
+                </Text>
+              </Pressable>
+            )}
+            {generate.isError && (
+              <Text className="mt-2 text-red-500">
+                Couldn&apos;t generate a report right now. Please try again.
+              </Text>
+            )}
+          </View>
+        )
+      )}
+    </View>
   );
 }
 

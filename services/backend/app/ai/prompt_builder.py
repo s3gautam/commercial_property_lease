@@ -4,7 +4,7 @@ hardcoded inline in agents or services."""
 from pathlib import Path
 from string import Template
 
-PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"
+PROMPTS_DIR = Path(__file__).resolve().parents[4] / "prompts"
 
 
 class PromptBuilder:

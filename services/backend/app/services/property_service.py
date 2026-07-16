@@ -1,5 +1,7 @@
 import uuid
 
+from app.ai.agents.search_agent import SearchAgent, SearchResult
+from app.ai.base_agent import AgentResponse
 from app.models.property import Property, PropertyStatus
 from app.repositories.property_repository import PropertyRepository
 
@@ -23,3 +25,7 @@ class PropertyService:
         if property_ is None or property_.status != PropertyStatus.LISTED:
             raise PropertyNotFoundError("Property not found")
         return property_
+
+    async def search(self, query: str, limit: int = 20) -> AgentResponse[SearchResult]:
+        agent = SearchAgent(self._properties)
+        return await agent.run(query=query, limit=limit)

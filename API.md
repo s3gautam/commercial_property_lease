@@ -97,12 +97,76 @@ PUT /api/v1/tenant-profile/me
 `PUT` upserts — safe to call again to edit an existing profile.
 `GET` 404s if the authenticated user hasn't created a profile yet.
 
+| Method | Path                              | Description                                    | Auth required |
+| ------ | ---------------------------------- | -------------------------------------------------- | -------------- |
+| GET    | `/api/v1/properties/search`         | AI-powered natural-language property search        | No             |
+| GET    | `/api/v1/properties/{id}/verification` | Get the latest AI verification report for a property | No          |
+| POST   | `/api/v1/properties/{id}/verification` | Generate a new AI verification report          | Yes (Bearer)   |
+| POST   | `/api/v1/leases`                    | Create a draft lease for a listed property         | Yes (Bearer)   |
+| GET    | `/api/v1/leases`                    | List the authenticated user's leases               | Yes (Bearer)   |
+| GET    | `/api/v1/leases/{id}`                | Get a lease and its drafted versions               | Yes (Bearer, owner only) |
+| POST   | `/api/v1/leases/{id}/draft`          | AI-draft a new lease document version              | Yes (Bearer, owner only) |
+| POST   | `/api/v1/leases/{id}/summary`        | AI-summarize the latest drafted version            | Yes (Bearer, owner only) |
+
+### Search shape
+
+```
+GET /api/v1/properties/search?q=office+space+in+austin+under+5000&limit=20
+
+-> data: {
+     criteria: { city, max_rent, min_area_sqft, keywords, explanation },
+     properties: PropertyRead[],
+     confidence: number
+   }
+-> meta: { latency_ms, total_tokens, validation_status }
+```
+
+`criteria` reflects what the SearchAgent extracted from the query; if the
+LLM response wasn't valid JSON, `validation_status` is `"invalid"` and the
+search falls back to matching the raw query as a keyword.
+
+### Verification report shape
+
+```
+GET/POST /api/v1/properties/{id}/verification
+-> data: { id, property_id, summary, risk_score, status, created_at }
+```
+
+`status` is `"completed"` on a successful AI response or `"failed"` if the
+agent's output couldn't be validated (a conservative fallback summary and
+maximal risk score are still stored, so tenants see something rather than
+an error).
+
+### Lease shapes
+
+```
+POST /api/v1/leases
+{ "property_id": "<uuid>", "start_date": "2026-01-01", "end_date": "2026-12-31" }
+-> data: LeaseRead   // status starts "draft", monthly_rent copied from the property
+
+GET /api/v1/leases/{id}
+-> data: { lease: LeaseRead, versions: LeaseVersionRead[] }
+
+POST /api/v1/leases/{id}/draft
+-> data: LeaseVersionRead   // document_text populated, ai_summary null
+
+POST /api/v1/leases/{id}/summary
+-> data: LeaseVersionRead   // ai_summary now populated from the latest draft
+```
+
+`/leases/{id}/summary` 409s if no draft has been generated yet. All lease
+endpoints 404 (not 403) if the lease belongs to a different tenant, to
+avoid confirming another user's lease exists.
+
+This is intentionally minimal — just enough CRUD to invoke the lease
+agents. Status transitions (pending signature, signed, terminated) and
+e-signature are Phase 7 scope; there is no web/mobile UI for leases yet
+(`/lease` is still a placeholder page).
+
 ## Planned Endpoints (later phases)
 
-- `/api/v1/properties/{id}/verification` — AI verification report
 - `/api/v1/chat/*` — tenant/landlord chat threads and messages
 - `/api/v1/kyc/*` — tenant KYC verification
-- `/api/v1/leases/*` — lease generation, AI summary, e-signature
 
 Every new endpoint must include validation, pagination/filtering/sorting
 where applicable, structured errors, and OpenAPI documentation.

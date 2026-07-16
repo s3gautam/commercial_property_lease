@@ -5,14 +5,13 @@ the end of every phase.
 
 ## Overall Progress
 
-Phase 4 of 14 complete (Repository Setup, Backend Foundation/Auth/Database,
-Web Application foundation, Mobile Application foundation).
+Phase 5 of 14 complete (Repository Setup, Backend Foundation/Auth/Database,
+Web Application foundation, Mobile Application foundation, AI Services).
 
 ## Current Phase
 
-Phase 4 — Mobile Application: **Complete** (foundation slice, feature parity
-with the Phase 3 web scope)
-Next: Phase 5 — AI Services
+Phase 5 — AI Services: **Complete**
+Next: Phase 6 — KYC
 
 ## Completed Tasks
 
@@ -159,11 +158,73 @@ half-implement" principle.
   → OTP login (code read from the real backend log) → onboarding →
   Profile (logged-in, showing email, saved company name, log out)
 
+### Phase 5 — AI Services
+
+All four agents named in CLAUDE.md's "AI Agents" examples are implemented,
+following the Application -> Agent -> Prompt Builder -> LLM Gateway ->
+Groq -> Output Validator architecture from Phase 1.
+
+- Fixed a real, previously-undetected Phase 1 bug: `PromptBuilder`'s
+  `PROMPTS_DIR` was computed with `parents[3]`, one level short of the
+  repo root (`services/prompts` instead of `/prompts`) — nothing had
+  actually called `PromptBuilder` until this phase exercised it
+- `app/ai/output_validator.py`: shared JSON-parsing/validation step
+  (tolerates markdown code fences some models wrap JSON in) used by
+  every agent that expects structured output
+- `LLMGateway.complete()` gained a `json_mode` parameter (Groq's
+  `response_format: json_object`) for agents that need structured output
+- **SearchAgent** (`app/ai/agents/search_agent.py`): extracts
+  `{city, max_rent, min_area_sqft, keywords, explanation}` from a
+  natural-language query, then queries `PropertyRepository.search_listed`
+  (extended with rent/area/keyword filters). Falls back to a raw-keyword
+  search if the LLM response isn't valid JSON, rather than failing the
+  request. `GET /api/v1/properties/search?q=...` (public)
+- **VerificationAgent** (`app/ai/agents/verification_agent.py`): produces
+  a `{summary, risk_score}` for a listing, persisted as a
+  `VerificationReport` row via the new `VerificationReportRepository`.
+  `GET /api/v1/properties/{id}/verification` (public, latest report) and
+  `POST .../verification` (auth required, generates a new one)
+- **LeaseDraftingAgent** + **LeaseSummaryAgent**
+  (`app/ai/agents/lease_drafting_agent.py`,
+  `app/ai/agents/lease_summary_agent.py`): draft a plain-language lease
+  document and summarize one, respectively. Required adding bare-minimum
+  Lease CRUD (`LeaseRepository`, `LeaseVersionRepository`,
+  `LeaseService`) just to have something to invoke them against —
+  `POST/GET /api/v1/leases`, `GET /api/v1/leases/{id}`,
+  `POST /api/v1/leases/{id}/draft`, `POST .../summary`, all auth-required
+  with ownership checks. Full lease management (status transitions,
+  e-signature, UI) stays Phase 7 scope — the `/lease` page is still a
+  placeholder
+- Schema fix + new migration (`0002_lease_version_document_text`):
+  `LeaseVersion.document_url` was `NOT NULL`, but there's no file-storage
+  pipeline yet to produce a real URL for an AI-drafted lease. Added a
+  nullable `document_text` column for the generated text and made
+  `document_url` nullable too (it'll hold a real URL once file storage
+  exists). Verified upgrade and downgrade against a real Postgres
+  instance, like the initial migration
+- 14 new backend tests (7 agent unit tests with mocked `LLMGateway`, 7
+  endpoint integration tests covering search, verification generate/
+  fetch/404, and the full lease create -> draft -> summarize -> fetch
+  flow plus an ownership-isolation check) — 41 passing total
+- Web + mobile: `/search` now runs a real search against the backend
+  (still fails against Groq in this sandbox — see below — but every
+  other layer, including the graceful error state, is real); property
+  detail's verification section now fetches/generates a real report,
+  showing a login prompt when logged out and an error state on failure
+  rather than crashing
+- **Real Groq calls could not be tested end-to-end in this session** —
+  no `GROQ_API_KEY` was available, and this sandbox's egress policy
+  blocks `api.groq.com` outright (confirmed via a live 403 from the
+  proxy). Every agent was verified with `LLMGateway.complete` mocked
+  (both success and malformed-JSON-fallback paths), and the web/mobile
+  UI was verified to wire correctly end-to-end and fail gracefully when
+  the real call is blocked — but nobody has seen an actual Groq response
+  flow through this code yet. Treat the LLM-facing path as
+  integration-tested against a contract, not against the real provider,
+  until someone runs it with a real key.
+
 ## Pending Tasks
 
-- Phase 5: AI services (SearchAgent, VerificationAgent,
-  LeaseDraftingAgent, LeaseSummaryAgent implementations) — unblocks the
-  Search and Verification Report steps in the web/mobile UI
 - Phase 6: KYC — unblocks the `/kyc` flow
 - Phase 7: Lease generation and e-signature — unblocks the `/lease` flow
 - Phase 8: Testing hardening (target 90%+ coverage across the whole
@@ -181,14 +242,19 @@ None known.
 ## Technical Debt
 
 - No CI pipeline configured yet.
-- Chat, KYC, and Lease endpoints/services are not yet implemented — only
-  their database schema exists so far; the web UI shows "coming soon"
-  placeholders for these.
+- Chat and KYC endpoints/services are not yet implemented — only their
+  database schema exists so far; the web/mobile UI shows "coming soon"
+  placeholders for these. Lease now has minimal create/draft/summarize
+  CRUD (Phase 5) but no status transitions, e-signature, or UI — `/lease`
+  is still a placeholder pending Phase 7.
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;
-  Google login and any AI agent calls will fail until configured. The web
-  login page only implements the OTP path for this reason.
+  Google login and every AI agent call will fail until configured (this
+  session confirmed the Groq call path is wired correctly up to the
+  point of the actual network request, which this sandbox's egress
+  policy blocks — see the Phase 5 section above). The web login page
+  only implements the OTP path for this reason.
 - `packages/types`' camelCase `User` domain type doesn't match the
   backend's actual snake_case JSON responses; `apps/web/lib/api/types.ts`
   defines web-local types matching reality instead. Reconcile these once
@@ -208,6 +274,17 @@ None known.
 - Neither `apps/web` nor `apps/mobile` implements Google Sign-In in the UI
   yet (the backend endpoint exists) — both only offer OTP login, since
   `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are unset in `.env`.
+- No agent output has ever been validated against a real Groq response —
+  see the Phase 5 note above. Prompt wording, JSON-mode reliability, and
+  the fallback paths are only as good as their unit tests until someone
+  runs this against a real key.
+- `SearchAgent`'s keyword matching is `ILIKE` substring search over
+  title/description, not real semantic search — fine for MVP data
+  volumes, but won't scale past a small catalog.
+- Lease drafts are stored as plain text in the database
+  (`lease_versions.document_text`) rather than rendered to a real
+  document and uploaded to object storage — MinIO is already in
+  `docker-compose.yml` but no S3 client exists yet in the backend.
 
 ## Future Enhancements
 
