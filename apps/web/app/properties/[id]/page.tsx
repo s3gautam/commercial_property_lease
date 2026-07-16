@@ -6,7 +6,6 @@ import {
   ChevronDown,
   IndianRupee,
   MapPin,
-  MessagesSquare,
   Ruler,
   ShieldCheck,
   Sparkles,
@@ -16,6 +15,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { ChatWithLandlord } from "@/components/chat-with-landlord";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
@@ -137,16 +137,7 @@ export default function PropertyDetailPage() {
 
       <VerificationSection property={property} />
 
-      <section className="mt-5 rounded-2xl border border-dashed border-border p-6">
-        <div className="flex items-center gap-2">
-          <MessagesSquare className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
-          <h2 className="font-medium">Chat with landlord</h2>
-        </div>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Chat threads are not implemented yet — this listing will let you message the landlord
-          directly once that lands.
-        </p>
-      </section>
+      <ChatWithLandlord propertyId={property.id} />
     </main>
   );
 }

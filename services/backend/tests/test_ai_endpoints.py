@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -184,6 +185,48 @@ async def test_lease_summary_before_draft_returns_409(client: AsyncClient, db_se
 
     response = await client.post(f"/api/v1/leases/{lease_id}/summary", headers=headers)
     assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_requires_auth(client: AsyncClient, db_session) -> None:
+    property_ = await _create_listed_property(db_session)
+    response = await client.post(
+        f"/api/v1/properties/{property_.id}/chat", json={"message": "Is this still available?"}
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_returns_landlord_reply(client: AsyncClient, db_session) -> None:
+    property_ = await _create_listed_property(db_session)
+    access_token = await _login(client, "chat-tenant@example.com", "222333")
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    with patch(
+        "app.ai.gateway.LLMGateway.complete",
+        AsyncMock(return_value=_llm_result("Sure, it's available from the 1st!")),
+    ):
+        response = await client.post(
+            f"/api/v1/properties/{property_.id}/chat",
+            json={"message": "Is this available soon?"},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["reply"] == "Sure, it's available from the 1st!"
+
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_404s_for_unknown_property(client: AsyncClient) -> None:
+    access_token = await _login(client, "chat-tenant2@example.com", "444555")
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = await client.post(
+        f"/api/v1/properties/{uuid.uuid4()}/chat",
+        json={"message": "Hello?"},
+        headers=headers,
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

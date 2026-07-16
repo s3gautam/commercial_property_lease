@@ -271,15 +271,22 @@ None known.
 ## Technical Debt
 
 - No CI pipeline configured yet.
-- Chat and KYC endpoints/services are not yet implemented on the
-  backend — only the database schema exists. `apps/web`'s `/kyc` page
-  is a client-only mock (document "upload" is just a file picker,
-  "verification" is a fixed timeout that always approves) requested as
-  a demo stand-in; it doesn't call an API or persist anything, and
-  `apps/mobile`'s KYC tab is still the plain `ComingSoon` placeholder.
-  Lease now has minimal create/draft/summarize CRUD (Phase 5) but no
-  status transitions, e-signature, or UI — `/lease` is still a
-  placeholder pending Phase 7.
+- KYC endpoints/services are not yet implemented on the backend — only
+  the database schema exists. `apps/web`'s `/kyc` page is a client-only
+  mock (document "upload" is just a file picker, "verification" is a
+  fixed timeout that always approves) requested as a demo stand-in; it
+  doesn't call an API or persist anything, and `apps/mobile`'s KYC tab
+  is still the plain `ComingSoon` placeholder. Lease now has minimal
+  create/draft/summarize CRUD (Phase 5) but no status transitions,
+  e-signature, or UI — `/lease` is still a placeholder pending Phase 7.
+- Chat now has a real backend endpoint (`POST
+  /api/v1/properties/{id}/chat`, `LandlordChatAgent`) and a working
+  `apps/web` UI (`ChatWithLandlord`), but it's intentionally
+  request/response only — no `ChatThread`/`Message` persistence (see
+  ARCHITECTURE.md's AI Layer section for why), so a conversation
+  doesn't survive a page refresh, and there's no real landlord on the
+  other end reading these — every reply is AI-generated in character.
+  `apps/mobile` doesn't have this UI yet.
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;

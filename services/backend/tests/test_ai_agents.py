@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.ai.agents.landlord_chat_agent import LandlordChatAgent, LandlordChatMessage
 from app.ai.agents.lease_drafting_agent import LeaseDraftingAgent
 from app.ai.agents.lease_summary_agent import LeaseSummaryAgent
 from app.ai.agents.search_agent import SearchAgent
@@ -147,3 +148,43 @@ async def test_lease_summary_agent_summarizes() -> None:
 
     assert response.validation_status == "valid"
     assert "12 months" in response.response.summary_text
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_replies_in_character() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(
+        return_value=_llm_result("Sure, the space is available from next month!")
+    )
+
+    response = await agent.run(_property(), "Is it available soon?", [])
+
+    assert response.validation_status == "valid"
+    assert response.response.reply == "Sure, the space is available from next month!"
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_includes_history_in_prompt() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(return_value=_llm_result("Yes, pets are fine!"))
+
+    history = [
+        LandlordChatMessage(role="tenant", content="Do you allow pets?"),
+        LandlordChatMessage(role="landlord", content="Depends on the pet, why do you ask?"),
+    ]
+    await agent.run(_property(), "I have a small dog.", history)
+
+    _system_prompt, user_prompt = agent.gateway.complete.call_args.args
+    assert "Do you allow pets?" in user_prompt
+    assert "Depends on the pet" in user_prompt
+
+
+@pytest.mark.asyncio
+async def test_landlord_chat_agent_falls_back_on_empty_reply() -> None:
+    agent = LandlordChatAgent()
+    agent.gateway.complete = AsyncMock(return_value=_llm_result("   "))
+
+    response = await agent.run(_property(), "Hello?", [])
+
+    assert response.validation_status == "invalid"
+    assert response.response.reply

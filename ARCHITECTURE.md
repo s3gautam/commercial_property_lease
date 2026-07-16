@@ -58,14 +58,27 @@ Application -> Agent -> Prompt Builder -> LLM Gateway -> Groq -> Output Validato
 | `VerificationAgent` | a `Property` | `{summary, risk_score}` | `POST/GET /api/v1/properties/{id}/verification` |
 | `LeaseDraftingAgent` | a `Lease` + its `Property` | drafted lease document text | `POST /api/v1/leases/{id}/draft` |
 | `LeaseSummaryAgent` | a lease document's full text | plain-language summary | `POST /api/v1/leases/{id}/summary` |
+| `LandlordChatAgent` | a `Property` + tenant message + conversation history | in-character landlord reply | `POST /api/v1/properties/{id}/chat` |
 
 Every agent's `run()` degrades gracefully on a malformed/unparseable LLM
 response — it falls back to a safe default (e.g. `SearchAgent` falls back
 to raw-keyword search; `VerificationAgent` returns a conservative
-"couldn't verify" summary with a maximal risk score) and marks
-`validation_status="invalid"` rather than raising and failing the
-request. Callers (API endpoints) never need their own LLM-failure
-handling beyond what the agent already does.
+"couldn't verify" summary with a maximal risk score; `LandlordChatAgent`
+falls back to a brief in-character "got pulled away, say that again?"
+reply) and marks `validation_status="invalid"` rather than raising and
+failing the request. Callers (API endpoints) never need their own
+LLM-failure handling beyond what the agent already does.
+
+`LandlordChatAgent` role-plays as the property's landlord — grounded in
+the listing details for on-topic questions, improvising a plausible
+in-character answer for anything else (move-in dates, pet policy, etc.)
+rather than refusing. It's intentionally stateless: `ChatService`
+(`app/services/chat_service.py`) doesn't persist to `ChatThread`/`Message`
+because those require a real `landlord_id`, and seeded/demo properties
+don't have one (`Property.landlord_id` is nullable and typically unset).
+The client round-trips the conversation history in each request instead.
+`apps/web`'s `ChatWithLandlord` component (`components/chat-with-
+landlord.tsx`) keeps that history in local component state.
 
 ## Authentication
 

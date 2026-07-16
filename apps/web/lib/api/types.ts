@@ -72,3 +72,12 @@ export interface ApiVerificationReport {
   status: "pending" | "completed" | "failed";
   created_at: string;
 }
+
+export interface ApiChatMessage {
+  role: "tenant" | "landlord";
+  content: string;
+}
+
+export interface ApiChatReply {
+  reply: string;
+}
