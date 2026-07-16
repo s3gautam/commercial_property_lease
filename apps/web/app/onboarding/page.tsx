@@ -11,13 +11,14 @@ import { useAuthStore } from "@/lib/store/auth-store";
 export default function OnboardingPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
 
   const [companyName, setCompanyName] = useState("");
   const [businessType, setBusinessType] = useState("");
 
   useEffect(() => {
-    if (!user) router.replace("/login");
-  }, [user, router]);
+    if (hasHydrated && !user) router.replace("/login");
+  }, [hasHydrated, user, router]);
 
   const existingProfile = useQuery({
     queryKey: ["tenant-profile", "me"],
