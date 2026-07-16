@@ -21,7 +21,7 @@ export function PropertyCard({
     >
       <div className="relative h-36 overflow-hidden bg-surface-2">
         <Image
-          src={propertyImageUrl(property.id)}
+          src={propertyImageUrl(property)}
           alt=""
           fill
           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"

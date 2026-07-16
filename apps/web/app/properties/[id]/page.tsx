@@ -76,7 +76,7 @@ export default function PropertyDetailPage() {
 
       <div className="relative mt-5 h-64 w-full overflow-hidden rounded-3xl bg-surface-2 shadow-card sm:h-80">
         <Image
-          src={propertyImageUrl(property.id, 1200, 700)}
+          src={propertyImageUrl(property, 1200, 700)}
           alt={property.title}
           fill
           priority

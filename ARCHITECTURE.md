@@ -122,6 +122,21 @@ backend Visit/Booking model), with `addBooking`/`cancelBooking`/
 `rescheduleBooking` actions. `/profile` lists them (upcoming and
 cancelled, separately) with Reschedule/Cancel per booking.
 
+`useBookingsStore.checkConflict(propertyId, dateKey, time,
+excludeBookingId?)` is the single place both booking rules are
+enforced, called from every path that can create/move a booking
+(`ScheduleVisitCta`, the profile page's reschedule flow, and
+`ChatWithLandlord` when the chat agent confirms one — see the AI Layer
+section above): a tenant can't have two upcoming visits for the same
+property (reschedule/cancel the existing one instead), and can't have
+two upcoming visits at the same date+time across different properties.
+`excludeBookingId` lets a reschedule check against every *other*
+booking without conflicting with itself. `ScheduleVisitCta` is also
+booking-aware: if the tenant already has an upcoming visit for *this*
+property, it replaces the "Schedule a visit" button with the
+appointment's date/time plus Reschedule/Cancel, rather than only
+catching the conflict after the fact.
+
 `Property.amenities` and `Property.nearby_landmarks` are computed
 `@property` accessors (not database columns) backed by the same
 `property_facts.py` module, exposed on `PropertyRead` so the web app's

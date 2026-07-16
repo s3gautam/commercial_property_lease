@@ -313,6 +313,21 @@ None known.
   integration for real distances, so both are derived from the
   property's id/city. Same caveat as the dummy photos: consistent
   per-listing, not actually true.
+- Listing photos (`lib/property-image.ts`) come from LoremFlickr,
+  keyword-filtered by property type parsed from the title (warehouse ->
+  warehouse/industrial photos, retail/storefront/showroom -> retail
+  photos, office/corporate/co-working -> office photos, anything else
+  -> a generic commercial-building fallback) rather than fully random
+  images. They're still real photos of *some* building of that general
+  type, not an actual photo of that actual listing - there's no photo
+  upload flow.
+- Booking conflict prevention (`useBookingsStore.checkConflict` — no
+  two upcoming visits for the same property, no two upcoming visits at
+  the same date+time across properties) only runs against what's in
+  *this browser's* localStorage. It can't catch a conflict against a
+  booking made from a different browser/device, since there's no
+  shared backend store for bookings at all (see the Chat/Scheduling
+  entries above).
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;

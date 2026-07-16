@@ -84,7 +84,7 @@ export default function SearchPage() {
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2">
                       <Image
-                        src={propertyImageUrl(property.id, 160, 160)}
+                        src={propertyImageUrl(property, 160, 160)}
                         alt=""
                         fill
                         sizes="80px"

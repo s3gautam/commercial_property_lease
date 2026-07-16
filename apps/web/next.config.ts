@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@proplease/ui", "@proplease/types", "@proplease/api", "@proplease/utils"],
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "picsum.photos" }],
+    remotePatterns: [{ protocol: "https", hostname: "loremflickr.com" }],
   },
 };
 

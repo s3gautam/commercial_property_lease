@@ -19,6 +19,7 @@ export function ChatWithLandlord({
 }) {
   const user = useAuthStore((state) => state.user);
   const addBooking = useBookingsStore((state) => state.addBooking);
+  const checkConflict = useBookingsStore((state) => state.checkConflict);
   const [messages, setMessages] = useState<ApiChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -36,12 +37,27 @@ export function ChatWithLandlord({
 
       const booking = response.data.booking;
       if (booking) {
-        addBooking({
-          propertyId,
-          propertyTitle,
-          dateKey: booking.date,
-          time: booking.time,
-        });
+        const conflict = checkConflict(propertyId, booking.date, booking.time);
+        if (conflict) {
+          // The agent already sent its confirmation text above based on
+          // availability alone - it has no visibility into the tenant's
+          // other locally-stored bookings, so a conflict can only be
+          // caught here. Follow up rather than silently booking anyway.
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "landlord",
+              content: `Actually, hold on — ${conflict.message.charAt(0).toLowerCase()}${conflict.message.slice(1)} Want to pick a different time?`,
+            },
+          ]);
+        } else {
+          addBooking({
+            propertyId,
+            propertyTitle,
+            dateKey: booking.date,
+            time: booking.time,
+          });
+        }
       }
     },
   });

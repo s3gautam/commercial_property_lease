@@ -13,7 +13,9 @@ interface ScheduleVisitModalProps {
   propertyTitle: string;
   open: boolean;
   onClose: () => void;
-  onConfirm: (dateKey: string, time: string) => void;
+  /** Return an error message to reject the slot (e.g. a booking
+   * conflict) and keep the picker open, or null/undefined to confirm. */
+  onConfirm: (dateKey: string, time: string) => string | null | undefined;
 }
 
 export function ScheduleVisitModal({
@@ -29,11 +31,13 @@ export function ScheduleVisitModal({
   );
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ dateKey: string; time: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setSelectedTime(null);
       setConfirmed(null);
+      setError(null);
     }
   }, [open]);
 
@@ -53,7 +57,12 @@ export function ScheduleVisitModal({
   const handleConfirm = () => {
     if (!selectedTime) return;
     const key = dateKey(selectedDate);
-    onConfirm(key, selectedTime);
+    const conflictMessage = onConfirm(key, selectedTime);
+    if (conflictMessage) {
+      setError(conflictMessage);
+      return;
+    }
+    setError(null);
     setConfirmed({ dateKey: key, time: selectedTime });
   };
 
@@ -117,6 +126,7 @@ export function ScheduleVisitModal({
                     onClick={() => {
                       setSelectedDate(date);
                       setSelectedTime(null);
+                      setError(null);
                     }}
                     className={`flex shrink-0 flex-col items-center rounded-xl border px-3 py-2 text-xs transition-colors ${
                       active
@@ -143,7 +153,10 @@ export function ScheduleVisitModal({
                       key={slot.time}
                       type="button"
                       disabled={!slot.available}
-                      onClick={() => setSelectedTime(slot.time)}
+                      onClick={() => {
+                        setSelectedTime(slot.time);
+                        setError(null);
+                      }}
                       className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                         selectedTime === slot.time
                           ? "border-transparent bg-accent-gradient text-white shadow-glow"
@@ -165,6 +178,8 @@ export function ScheduleVisitModal({
             >
               {selectedTime ? `Confirm ${selectedTime}` : "Select a time"}
             </button>
+
+            {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
           </>
         )}
       </div>

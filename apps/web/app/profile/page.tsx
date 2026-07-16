@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const bookings = useBookingsStore((state) => state.bookings);
   const cancelBooking = useBookingsStore((state) => state.cancelBooking);
   const rescheduleBooking = useBookingsStore((state) => state.rescheduleBooking);
+  const checkConflict = useBookingsStore((state) => state.checkConflict);
 
   const [rescheduling, setRescheduling] = useState<Booking | null>(null);
 
@@ -154,7 +155,12 @@ export default function ProfilePage() {
           propertyTitle={rescheduling.propertyTitle}
           open={Boolean(rescheduling)}
           onClose={() => setRescheduling(null)}
-          onConfirm={(dateKey, time) => rescheduleBooking(rescheduling.id, dateKey, time)}
+          onConfirm={(dateKey, time) => {
+            const conflict = checkConflict(rescheduling.propertyId, dateKey, time, rescheduling.id);
+            if (conflict) return conflict.message;
+            rescheduleBooking(rescheduling.id, dateKey, time);
+            return null;
+          }}
         />
       )}
     </main>
