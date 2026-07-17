@@ -22,6 +22,7 @@ import { ChatWithLandlord } from "@/components/chat-with-landlord";
 import { NearbySection } from "@/components/nearby-section";
 import { RecommendedProperties } from "@/components/recommended-properties";
 import { ScheduleVisitCta } from "@/components/schedule-visit-cta";
+import { ShareButton } from "@/components/share-button";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
@@ -85,7 +86,10 @@ export default function PropertyDetailPage() {
           sizes="(min-width: 768px) 768px, 100vw"
           className="object-cover"
         />
-        <WatchlistButton property={property} />
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <ShareButton title={property.title} text={`${property.city}, ${property.state}`} />
+          <WatchlistButton property={property} />
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-start justify-between gap-3">
@@ -359,7 +363,7 @@ function WatchlistButton({ property }: { property: ApiProperty }) {
       onClick={() => toggle(property)}
       aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
       aria-pressed={watchlisted}
-      className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-soft backdrop-blur transition-transform hover:scale-110 active:scale-95"
+      className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-soft backdrop-blur transition-transform hover:scale-110 active:scale-95"
     >
       <Heart className={watchlisted ? "h-5 w-5 fill-danger text-danger" : "h-5 w-5"} strokeWidth={2} />
     </button>

@@ -9,13 +9,32 @@ class PropertyRepository(BaseRepository[Property]):
 
     async def list_listed(
         self,
-        limit: int,
+        limit: int | None,
         offset: int,
         city: str | None = None,
+        min_rent: float | None = None,
+        max_rent: float | None = None,
+        min_area_sqft: float | None = None,
+        max_area_sqft: float | None = None,
+        property_type: str | None = None,
     ) -> tuple[list[Property], int]:
-        filters = [Property.status == PropertyStatus.LISTED]
+        """`limit=None` returns every matching row (no SQL-level paging) -
+        used when the caller needs to apply a further filter in Python
+        (amenities aren't a real column - see PropertyService.browse) and
+        has to paginate the final filtered list itself instead."""
+        filters: list[ColumnElement[bool]] = [Property.status == PropertyStatus.LISTED]
         if city is not None:
             filters.append(Property.city.ilike(city))
+        if min_rent is not None:
+            filters.append(Property.monthly_rent >= min_rent)
+        if max_rent is not None:
+            filters.append(Property.monthly_rent <= max_rent)
+        if min_area_sqft is not None:
+            filters.append(Property.area_sqft >= min_area_sqft)
+        if max_area_sqft is not None:
+            filters.append(Property.area_sqft <= max_area_sqft)
+        if property_type:
+            filters.append(Property.title.ilike(f"%{property_type}%"))
 
         base_query = select(Property).where(*filters)
 
@@ -24,9 +43,11 @@ class PropertyRepository(BaseRepository[Property]):
         )
         total = count_result.scalar_one()
 
-        result = await self.session.execute(
-            base_query.order_by(Property.created_at.desc()).limit(limit).offset(offset)
-        )
+        ordered_query = base_query.order_by(Property.created_at.desc())
+        if limit is not None:
+            ordered_query = ordered_query.limit(limit).offset(offset)
+
+        result = await self.session.execute(ordered_query)
         return list(result.scalars().all()), total
 
     async def search_listed(

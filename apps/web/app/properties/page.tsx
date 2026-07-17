@@ -1,25 +1,79 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { useState } from "react";
 
 import { PropertyCard } from "@/components/property-card";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty } from "@/lib/api/types";
+import { AMENITY_OPTIONS, PROPERTY_TYPES } from "@/lib/property-options";
 
 const PAGE_SIZE = 20;
 
 export default function PropertiesPage() {
   const [page, setPage] = useState(1);
   const [city, setCity] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const [minRent, setMinRent] = useState("");
+  const [maxRent, setMaxRent] = useState("");
+  const [minArea, setMinArea] = useState("");
+  const [maxArea, setMaxArea] = useState("");
+  const [propertyType, setPropertyType] = useState("");
+  const [amenities, setAmenities] = useState<string[]>([]);
+
+  const resetToFirstPage = () => setPage(1);
+
+  const toggleAmenity = (amenity: string) => {
+    setAmenities((current) =>
+      current.includes(amenity) ? current.filter((a) => a !== amenity) : [...current, amenity],
+    );
+    resetToFirstPage();
+  };
+
+  const clearFilters = () => {
+    setMinRent("");
+    setMaxRent("");
+    setMinArea("");
+    setMaxArea("");
+    setPropertyType("");
+    setAmenities([]);
+    resetToFirstPage();
+  };
+
+  const activeFilterCount =
+    (minRent ? 1 : 0) +
+    (maxRent ? 1 : 0) +
+    (minArea ? 1 : 0) +
+    (maxArea ? 1 : 0) +
+    (propertyType ? 1 : 0) +
+    amenities.length;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("page_size", String(PAGE_SIZE));
+  if (city) queryParams.set("city", city);
+  if (minRent) queryParams.set("min_rent", minRent);
+  if (maxRent) queryParams.set("max_rent", maxRent);
+  if (minArea) queryParams.set("min_area_sqft", minArea);
+  if (maxArea) queryParams.set("max_area_sqft", maxArea);
+  if (propertyType) queryParams.set("property_type", propertyType);
+  if (amenities.length > 0) queryParams.set("amenities", amenities.join(","));
 
   const propertiesQuery = useQuery({
-    queryKey: ["properties", page, city],
-    queryFn: () =>
-      apiClient.get<ApiProperty[]>(
-        `/properties?page=${page}&page_size=${PAGE_SIZE}${city ? `&city=${encodeURIComponent(city)}` : ""}`,
-      ),
+    queryKey: [
+      "properties",
+      page,
+      city,
+      minRent,
+      maxRent,
+      minArea,
+      maxArea,
+      propertyType,
+      amenities,
+    ],
+    queryFn: () => apiClient.get<ApiProperty[]>(`/properties?${queryParams.toString()}`),
   });
 
   const properties = propertiesQuery.data?.data ?? [];
@@ -35,18 +89,153 @@ export default function PropertiesPage() {
         </p>
       </div>
 
-      <div className="relative mb-8 max-w-xs">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={city}
-          onChange={(event) => {
-            setCity(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Filter by city…"
-          className="w-full rounded-full border border-border bg-surface py-2.5 pl-9 pr-4 text-sm shadow-soft outline-none transition-shadow focus:shadow-glow"
-        />
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-xs flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={city}
+            onChange={(event) => {
+              setCity(event.target.value);
+              resetToFirstPage();
+            }}
+            placeholder="Filter by city…"
+            className="w-full rounded-full border border-border bg-surface py-2.5 pl-9 pr-4 text-sm shadow-soft outline-none transition-shadow focus:shadow-glow"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium shadow-soft transition-colors hover:bg-surface-2"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1.5 text-xs font-semibold text-background">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear filters
+          </button>
+        )}
       </div>
+
+      {filtersOpen && (
+        <div className="mb-8 rounded-2xl border border-border bg-surface p-5 shadow-soft">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Rent range (₹/mo)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={minRent}
+                  onChange={(event) => {
+                    setMinRent(event.target.value);
+                    resetToFirstPage();
+                  }}
+                  placeholder="Min"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:shadow-glow"
+                />
+                <span className="text-muted-foreground">–</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={maxRent}
+                  onChange={(event) => {
+                    setMaxRent(event.target.value);
+                    resetToFirstPage();
+                  }}
+                  placeholder="Max"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:shadow-glow"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Area range (sqft)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={minArea}
+                  onChange={(event) => {
+                    setMinArea(event.target.value);
+                    resetToFirstPage();
+                  }}
+                  placeholder="Min"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:shadow-glow"
+                />
+                <span className="text-muted-foreground">–</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={maxArea}
+                  onChange={(event) => {
+                    setMaxArea(event.target.value);
+                    resetToFirstPage();
+                  }}
+                  placeholder="Max"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:shadow-glow"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Property type
+              </label>
+              <select
+                value={propertyType}
+                onChange={(event) => {
+                  setPropertyType(event.target.value);
+                  resetToFirstPage();
+                }}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:shadow-glow"
+              >
+                <option value="">Any type</option>
+                {PROPERTY_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2 lg:col-span-1">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Amenities
+              </label>
+              <div className="flex max-h-40 flex-wrap gap-x-3 gap-y-2 overflow-y-auto pr-1 text-sm">
+                {AMENITY_OPTIONS.map((amenity) => (
+                  <label key={amenity} className="flex items-center gap-1.5 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={amenities.includes(amenity)}
+                      onChange={() => toggleAmenity(amenity)}
+                      className="h-3.5 w-3.5 rounded border-border accent-foreground"
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {propertiesQuery.isLoading && (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

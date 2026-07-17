@@ -156,6 +156,34 @@ everywhere a given listing appears.
 Amenities and "What's nearby" sections on the property detail page and
 the chat agent are always looking at identical facts.
 
+## Browse Filters
+
+`GET /api/v1/properties` accepts `min_rent`/`max_rent`,
+`min_area_sqft`/`max_area_sqft`, `property_type`, and `amenities`
+(comma-separated) alongside the existing `city`/`page`/`page_size`.
+Rent, area, and city are real columns so `PropertyRepository.list_listed`
+applies them as SQL `WHERE` clauses. `property_type` isn't a stored
+column (there's no `Property.type`), so it matches via
+`Property.title.ilike(f"%{property_type}%")` against the seeded titles
+in `property_seed_service.py`.
+
+`amenities` can't be filtered in SQL at all since `Property.amenities`
+is the computed accessor described above, not a column. When an
+amenities filter is present, `PropertyService.browse` takes a second
+path: it calls the repository with `limit=None` to fetch every row
+matching the SQL-filterable criteria, filters those in Python via
+`required.issubset(set(p.amenities))`, and paginates the filtered list
+itself. This is fine at this dataset's scale (dozens of rows); a real
+amenities table/index would be needed to keep this SQL-side at a larger
+scale.
+
+The web browse page (`apps/web/app/properties/page.tsx`) renders a
+collapsible filter panel driven by `apps/web/lib/property-options.ts`
+(`PROPERTY_TYPES`, `AMENITY_OPTIONS` — hand-kept in sync with
+`property_seed_service.py` and `property_facts.py::AMENITY_POOL` so the
+UI never offers an option the backend can't match). Any filter change
+resets pagination to page 1.
+
 ## Authentication
 
 Authentication is the first vertical slice through the full stack and is

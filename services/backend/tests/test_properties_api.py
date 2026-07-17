@@ -8,17 +8,23 @@ from app.models.property import Property, PropertyStatus
 
 
 async def _create_property(
-    session: AsyncSession, *, city: str = "Austin", status_: PropertyStatus = PropertyStatus.LISTED
+    session: AsyncSession,
+    *,
+    city: str = "Austin",
+    status_: PropertyStatus = PropertyStatus.LISTED,
+    title: str = "Downtown Office Suite",
+    monthly_rent: float = 4500,
+    area_sqft: float = 1200,
 ) -> Property:
     property_ = Property(
-        title="Downtown Office Suite",
+        title=title,
         description="A bright office suite in the heart of downtown.",
         address="123 Main St",
         city=city,
         state="TX",
         country="USA",
-        area_sqft=1200,
-        monthly_rent=4500,
+        area_sqft=area_sqft,
+        monthly_rent=monthly_rent,
         status=status_,
     )
     session.add(property_)
@@ -74,6 +80,66 @@ async def test_browse_paginates(client: AsyncClient, db_session) -> None:
     response = await client.get("/api/v1/properties", params={"page": 2, "page_size": 2})
     body = response.json()
     assert len(body["data"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_browse_filters_by_rent_range(client: AsyncClient, db_session) -> None:
+    cheap = await _create_property(db_session, monthly_rent=1000)
+    expensive = await _create_property(db_session, monthly_rent=9000)
+
+    response = await client.get("/api/v1/properties", params={"min_rent": 5000})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(expensive.id) in ids
+    assert str(cheap.id) not in ids
+
+    response = await client.get("/api/v1/properties", params={"max_rent": 5000})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(cheap.id) in ids
+    assert str(expensive.id) not in ids
+
+
+@pytest.mark.asyncio
+async def test_browse_filters_by_area_range(client: AsyncClient, db_session) -> None:
+    small = await _create_property(db_session, area_sqft=500)
+    large = await _create_property(db_session, area_sqft=5000)
+
+    response = await client.get("/api/v1/properties", params={"min_area_sqft": 2000})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(large.id) in ids
+    assert str(small.id) not in ids
+
+    response = await client.get("/api/v1/properties", params={"max_area_sqft": 2000})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(small.id) in ids
+    assert str(large.id) not in ids
+
+
+@pytest.mark.asyncio
+async def test_browse_filters_by_property_type(client: AsyncClient, db_session) -> None:
+    office = await _create_property(db_session, title="Modern Office Space on Main St")
+    warehouse = await _create_property(db_session, title="Large Warehouse on Main St")
+
+    response = await client.get("/api/v1/properties", params={"property_type": "Warehouse"})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(warehouse.id) in ids
+    assert str(office.id) not in ids
+
+
+@pytest.mark.asyncio
+async def test_browse_filters_by_amenities(client: AsyncClient, db_session) -> None:
+    from app.services.property_facts import AMENITY_POOL, get_amenities
+
+    property_ = await _create_property(db_session)
+    amenities = get_amenities(property_.id)
+    missing = next(a for a in AMENITY_POOL if a not in amenities)
+
+    response = await client.get("/api/v1/properties", params={"amenities": amenities[0]})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(property_.id) in ids
+
+    response = await client.get("/api/v1/properties", params={"amenities": missing})
+    ids = {p["id"] for p in response.json()["data"]}
+    assert str(property_.id) not in ids
 
 
 @pytest.mark.asyncio

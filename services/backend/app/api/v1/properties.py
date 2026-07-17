@@ -49,8 +49,27 @@ async def browse_properties(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     city: Annotated[str | None, Query()] = None,
+    min_rent: Annotated[float | None, Query(ge=0)] = None,
+    max_rent: Annotated[float | None, Query(ge=0)] = None,
+    min_area_sqft: Annotated[float | None, Query(ge=0)] = None,
+    max_area_sqft: Annotated[float | None, Query(ge=0)] = None,
+    property_type: Annotated[str | None, Query()] = None,
+    amenities: Annotated[str | None, Query(description="Comma-separated amenity names")] = None,
 ) -> ApiResponse[list[PropertyRead]]:
-    properties, total = await property_service.browse(page, page_size, city)
+    amenities_list = (
+        [a.strip() for a in amenities.split(",") if a.strip()] if amenities else None
+    )
+    properties, total = await property_service.browse(
+        page,
+        page_size,
+        city,
+        min_rent=min_rent,
+        max_rent=max_rent,
+        min_area_sqft=min_area_sqft,
+        max_area_sqft=max_area_sqft,
+        property_type=property_type,
+        amenities=amenities_list,
+    )
 
     return ApiResponse(
         success=True,
