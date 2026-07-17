@@ -137,6 +137,19 @@ property, it replaces the "Schedule a visit" button with the
 appointment's date/time plus Reschedule/Cancel, rather than only
 catching the conflict after the fact.
 
+## Watchlist
+
+`useWatchlistStore` (`apps/web/lib/store/watchlist-store.ts`, Zustand +
+`persist`/localStorage — same pattern and same "no backend model"
+caveat as bookings) stores full `ApiProperty` objects, not just ids, so
+`/profile`'s Watchlist section can render `PropertyCard`s directly
+without refetching each one. The heart toggle
+(`isWatchlisted`/`toggle`) lives on `PropertyCard` itself (used by
+Browse, Recommended, and the Watchlist grid alike) and as a standalone
+`WatchlistButton` overlaying the property detail page's hero photo —
+both read/write the same store, so the heart state is consistent
+everywhere a given listing appears.
+
 `Property.amenities` and `Property.nearby_landmarks` are computed
 `@property` accessors (not database columns) backed by the same
 `property_facts.py` module, exposed on `PropertyRead` so the web app's

@@ -6,11 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PropertyCard } from "@/components/property-card";
 import { ScheduleVisitModal } from "@/components/schedule-visit-modal";
 import { apiClient } from "@/lib/api/client";
 import type { ApiTenantProfile } from "@/lib/api/types";
 import { type Booking, useBookingsStore } from "@/lib/store/bookings-store";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -27,6 +29,7 @@ export default function ProfilePage() {
   const cancelBooking = useBookingsStore((state) => state.cancelBooking);
   const rescheduleBooking = useBookingsStore((state) => state.rescheduleBooking);
   const checkConflict = useBookingsStore((state) => state.checkConflict);
+  const watchlist = useWatchlistStore((state) => state.properties);
 
   const [rescheduling, setRescheduling] = useState<Booking | null>(null);
 
@@ -50,7 +53,7 @@ export default function ProfilePage() {
   const profile = profileQuery.data?.data;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-14">
+    <main className="mx-auto max-w-4xl px-6 py-14">
       <div className="mb-8 flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-gradient text-white shadow-glow">
           <User className="h-5 w-5" strokeWidth={2.25} />
@@ -72,6 +75,7 @@ export default function ProfilePage() {
         </Link>
       </div>
 
+      <div className="mx-auto max-w-2xl">
       <h2 className="text-lg font-semibold tracking-tight">My bookings</h2>
 
       {upcoming.length === 0 ? (
@@ -147,6 +151,21 @@ export default function ProfilePage() {
             ))}
           </div>
         </>
+      )}
+      </div>
+
+      <h2 className="mt-10 text-lg font-semibold tracking-tight">Watchlist</h2>
+
+      {watchlist.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+          No saved properties yet. Tap the heart icon on any listing to save it here.
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {watchlist.map((property, index) => (
+            <PropertyCard key={property.id} property={property} animationDelayMs={index * 40} />
+          ))}
+        </div>
       )}
 
       {rescheduling && (

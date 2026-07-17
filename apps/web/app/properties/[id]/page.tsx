@@ -5,6 +5,7 @@ import { formatInr } from "@proplease/utils";
 import {
   ArrowLeft,
   ChevronDown,
+  Heart,
   IndianRupee,
   MapPin,
   Ruler,
@@ -25,6 +26,7 @@ import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
 const STATUS_STYLES: Record<string, string> = {
   listed: "bg-success/15 text-success",
@@ -83,6 +85,7 @@ export default function PropertyDetailPage() {
           sizes="(min-width: 768px) 768px, 100vw"
           className="object-cover"
         />
+        <WatchlistButton property={property} />
       </div>
 
       <div className="mt-6 flex flex-wrap items-start justify-between gap-3">
@@ -343,6 +346,23 @@ function RiskGauge({ score }: { score: number }) {
         />
       </div>
     </div>
+  );
+}
+
+function WatchlistButton({ property }: { property: ApiProperty }) {
+  const watchlisted = useWatchlistStore((state) => state.isWatchlisted(property.id));
+  const toggle = useWatchlistStore((state) => state.toggle);
+
+  return (
+    <button
+      type="button"
+      onClick={() => toggle(property)}
+      aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
+      aria-pressed={watchlisted}
+      className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-soft backdrop-blur transition-transform hover:scale-110 active:scale-95"
+    >
+      <Heart className={watchlisted ? "h-5 w-5 fill-danger text-danger" : "h-5 w-5"} strokeWidth={2} />
+    </button>
   );
 }
 

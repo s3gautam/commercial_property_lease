@@ -328,6 +328,11 @@ None known.
   booking made from a different browser/device, since there's no
   shared backend store for bookings at all (see the Chat/Scheduling
   entries above).
+- Watchlist (`useWatchlistStore`) is the same localStorage-only pattern
+  as bookings — no backend model, doesn't sync across devices/browsers,
+  and stores a snapshot of the property at the time it was saved
+  (title/rent/etc. won't update if the listing changes later). No
+  `apps/mobile` equivalent yet.
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;

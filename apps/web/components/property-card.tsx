@@ -1,10 +1,13 @@
+"use client";
+
 import { formatInr } from "@proplease/utils";
-import { MapPin, Ruler } from "lucide-react";
+import { Heart, MapPin, Ruler } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 import type { ApiProperty } from "@/lib/api/types";
 import { propertyImageUrl } from "@/lib/property-image";
+import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
 export function PropertyCard({
   property,
@@ -13,6 +16,9 @@ export function PropertyCard({
   property: ApiProperty;
   animationDelayMs?: number;
 }) {
+  const watchlisted = useWatchlistStore((state) => state.isWatchlisted(property.id));
+  const toggleWatchlist = useWatchlistStore((state) => state.toggle);
+
   return (
     <Link
       href={`/properties/${property.id}`}
@@ -30,6 +36,22 @@ export function PropertyCard({
         <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium capitalize text-black shadow-soft backdrop-blur">
           {property.status}
         </span>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleWatchlist(property);
+          }}
+          aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
+          aria-pressed={watchlisted}
+          className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-black shadow-soft backdrop-blur transition-transform hover:scale-110 active:scale-95"
+        >
+          <Heart
+            className={watchlisted ? "h-4 w-4 fill-danger text-danger" : "h-4 w-4"}
+            strokeWidth={2}
+          />
+        </button>
       </div>
 
       <div className="flex flex-col gap-2 p-4">
