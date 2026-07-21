@@ -57,17 +57,27 @@ class SmtpNotificationSender(NotificationSender):
         message["To"] = to
 
         with smtplib.SMTP(self._host, self._port, timeout=10) as server:
+            server.ehlo()
             if self._use_tls:
                 server.starttls()
+                server.ehlo()
             if self._username:
                 server.login(self._username, self._password)
             server.sendmail(self._from_email, [to], message.as_string())
 
     async def send_email(self, to: str, subject: str, body: str) -> None:
+        # Logged on both outcomes, not just failure - a silent success and
+        # a silently-never-called sender look identical in the logs
+        # otherwise, which made a real delivery problem impossible to
+        # diagnose from Railway logs alone.
         try:
             await asyncio.to_thread(self._send_sync, to, subject, body)
         except Exception:
             logger.error("notification.email_failed", to=to, subject=subject, exc_info=True)
+        else:
+            logger.info(
+                "notification.email_sent", to=to, subject=subject, host=self._host, port=self._port
+            )
 
     async def send_sms(self, to: str, body: str) -> None:
         logger.info("notification.sms", to=to, body=body)

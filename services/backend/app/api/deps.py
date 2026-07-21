@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db_session
+from app.core.logging import get_logger
 from app.core.redis import get_redis
 from app.core.security import InvalidTokenError, TokenType, decode_token
 from app.models.user import User
@@ -18,6 +19,8 @@ from app.services.notification_sender import (
     SmtpNotificationSender,
 )
 from app.services.otp_service import OtpService
+
+logger = get_logger(__name__)
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -33,8 +36,10 @@ def get_notification_sender() -> NotificationSender:
     instead of sending, so local dev never needs real credentials."""
     settings = get_settings()
     if not settings.smtp_host:
+        logger.info("notification.sender_selected", sender="console")
         return ConsoleNotificationSender()
 
+    logger.info("notification.sender_selected", sender="smtp", host=settings.smtp_host)
     return SmtpNotificationSender(
         host=settings.smtp_host,
         port=settings.smtp_port,
