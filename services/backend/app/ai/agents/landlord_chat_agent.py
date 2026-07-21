@@ -70,7 +70,7 @@ class LandlordChatAgent(BaseAgent[LandlordChatReply]):
             amenities=amenities_text,
             nearby=nearby_text,
             available_slots=slots_text,
-            today=date.today().isoformat(),
+            today=date.today().strftime("%A, %Y-%m-%d"),
             history=history_text,
             message=message,
         )
