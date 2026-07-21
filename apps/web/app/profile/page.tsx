@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PropertyCard } from "@/components/property-card";
 import { ScheduleVisitModal } from "@/components/schedule-visit-modal";
 import { apiClient } from "@/lib/api/client";
@@ -32,6 +33,8 @@ export default function ProfilePage() {
   const watchlist = useWatchlistStore((state) => state.properties);
 
   const [rescheduling, setRescheduling] = useState<Booking | null>(null);
+  const [confirmingReschedule, setConfirmingReschedule] = useState<Booking | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (hasHydrated && !user) router.replace("/login");
@@ -110,14 +113,14 @@ export default function ProfilePage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setRescheduling(booking)}
+                  onClick={() => setConfirmingReschedule(booking)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-surface-2"
                 >
                   Reschedule
                 </button>
                 <button
                   type="button"
-                  onClick={() => cancelBooking(booking.id)}
+                  onClick={() => setConfirmingCancel(booking)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
                 >
                   Cancel
@@ -182,6 +185,37 @@ export default function ProfilePage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmingReschedule)}
+        title="Reschedule this visit?"
+        description={
+          confirmingReschedule
+            ? `You'll pick a new time for your visit to ${confirmingReschedule.propertyTitle}, currently set for ${DATE_LABEL.format(new Date(confirmingReschedule.dateKey))} at ${confirmingReschedule.time}.`
+            : ""
+        }
+        confirmLabel="Pick a new time"
+        onConfirm={() => {
+          if (confirmingReschedule) setRescheduling(confirmingReschedule);
+        }}
+        onClose={() => setConfirmingReschedule(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmingCancel)}
+        title="Cancel this visit?"
+        description={
+          confirmingCancel
+            ? `This will cancel your visit to ${confirmingCancel.propertyTitle} on ${DATE_LABEL.format(new Date(confirmingCancel.dateKey))} at ${confirmingCancel.time}.`
+            : ""
+        }
+        confirmLabel="Cancel visit"
+        danger
+        onConfirm={() => {
+          if (confirmingCancel) cancelBooking(confirmingCancel.id);
+        }}
+        onClose={() => setConfirmingCancel(null)}
+      />
     </main>
   );
 }
