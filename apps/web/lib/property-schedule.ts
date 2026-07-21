@@ -28,6 +28,14 @@ function hashString(input: string): number {
   return hash;
 }
 
+function timeToMinutes(time: string): number {
+  const [timePart, period] = time.split(" ") as [string, string];
+  const [hourStr, minuteStr] = timePart.split(":") as [string, string];
+  let hour = Number(hourStr) % 12;
+  if (period.toUpperCase() === "PM") hour += 12;
+  return hour * 60 + Number(minuteStr);
+}
+
 export function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -52,8 +60,14 @@ export function getTimeSlots(propertyId: string, date: Date): TimeSlot[] {
   if (isClosedDay(date)) return [];
 
   const seed = hashString(`${propertyId}-${dateKey(date)}`);
+  const now = new Date();
+  const isToday = dateKey(date) === dateKey(now);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
   return ALL_TIMES.map((time, index) => ({
     time,
-    available: (seed + index * 13) % 10 < 7, // ~70% of slots open
+    // ~70% of slots open, minus any that have already passed today - a
+    // slot at 11 AM shouldn't be offered at 9 PM the same day.
+    available: (seed + index * 13) % 10 < 7 && (!isToday || timeToMinutes(time) > currentMinutes),
   }));
 }

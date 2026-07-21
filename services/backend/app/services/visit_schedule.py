@@ -8,7 +8,7 @@ same caveat as amenities/nearby landmarks (app/services/property_facts.py).
 
 import uuid
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 ALL_TIMES = [
     "9:00 AM",
@@ -37,6 +37,16 @@ def is_closed_day(d: date) -> bool:
     return d.weekday() == 6  # Sunday; Python Monday=0..Sunday=6
 
 
+def _time_to_minutes(time_str: str) -> int:
+    # "9:00 AM" -> 540, "12:00 PM" -> 720
+    time_part, period = time_str.split(" ")
+    hour_str, minute_str = time_part.split(":")
+    hour = int(hour_str) % 12
+    if period.upper() == "PM":
+        hour += 12
+    return hour * 60 + int(minute_str)
+
+
 @dataclass
 class DaySlots:
     day: date
@@ -45,8 +55,12 @@ class DaySlots:
 
 def get_available_slots(property_id: uuid.UUID, days: int = 7) -> list[DaySlots]:
     """Available (not "booked") slots for the next `days` days, skipping
-    closed days and days with no open slots."""
-    today = date.today()
+    closed days, days with no open slots, and - for today specifically -
+    times that have already passed (matches apps/web/lib/property-
+    schedule.ts, which applies the same same-day cutoff)."""
+    now = datetime.now()
+    today = now.date()
+    current_minutes = now.hour * 60 + now.minute
     result: list[DaySlots] = []
 
     for offset in range(days):
@@ -55,7 +69,12 @@ def get_available_slots(property_id: uuid.UUID, days: int = 7) -> list[DaySlots]
             continue
 
         seed = _hash_string(f"{property_id}-{day.isoformat()}")
-        times = [time for index, time in enumerate(ALL_TIMES) if (seed + index * 13) % 10 < 7]
+        times = [
+            time
+            for index, time in enumerate(ALL_TIMES)
+            if (seed + index * 13) % 10 < 7
+            and (day != today or _time_to_minutes(time) > current_minutes)
+        ]
         if times:
             result.append(DaySlots(day=day, times=times))
 
@@ -65,9 +84,17 @@ def get_available_slots(property_id: uuid.UUID, days: int = 7) -> list[DaySlots]
 def is_slot_available(property_id: uuid.UUID, day: date, time: str) -> bool:
     if is_closed_day(day):
         return False
-    seed = _hash_string(f"{property_id}-{day.isoformat()}")
+
     try:
         index = ALL_TIMES.index(time)
     except ValueError:
         return False
+
+    now = datetime.now()
+    if day < now.date():
+        return False
+    if day == now.date() and _time_to_minutes(time) <= now.hour * 60 + now.minute:
+        return False
+
+    seed = _hash_string(f"{property_id}-{day.isoformat()}")
     return (seed + index * 13) % 10 < 7
