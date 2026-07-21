@@ -17,8 +17,8 @@ import {
   useRescheduleVisitMutation,
   useVisitsQuery,
 } from "@/lib/hooks/use-visits";
+import { useWatchlistQuery } from "@/lib/hooks/use-watchlist";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -34,7 +34,8 @@ export default function ProfilePage() {
   const visitsQuery = useVisitsQuery();
   const rescheduleVisit = useRescheduleVisitMutation();
   const cancelVisit = useCancelVisitMutation();
-  const watchlist = useWatchlistStore((state) => state.properties);
+  const watchlistQuery = useWatchlistQuery();
+  const watchlist = watchlistQuery.data?.data ?? [];
 
   const [rescheduling, setRescheduling] = useState<ApiVisit | null>(null);
   const [confirmingReschedule, setConfirmingReschedule] = useState<ApiVisit | null>(null);

@@ -333,11 +333,14 @@ None known.
   booking made from a different browser/device, since there's no
   shared backend store for bookings at all (see the Chat/Scheduling
   entries above).
-- Watchlist (`useWatchlistStore`) is the same localStorage-only pattern
-  as bookings — no backend model, doesn't sync across devices/browsers,
-  and stores a snapshot of the property at the time it was saved
-  (title/rent/etc. won't update if the listing changes later). No
-  `apps/mobile` equivalent yet.
+- Watchlist now has a real backend model (`WatchlistItem`,
+  `GET/POST /api/v1/watchlist`, `DELETE /api/v1/watchlist/{id}`) —
+  fixed the bug where liking a property was shared across whichever
+  accounts were logged into the same browser, since it used to be
+  pure localStorage with no per-user scoping at all. Syncs across
+  devices/browsers now, and always reflects the listing's current
+  data (no stale snapshot) since it stores just the id and joins to
+  `Property` on read. No `apps/mobile` equivalent yet.
 - `ConsoleNotificationSender` logs OTP codes instead of delivering real
   email/SMS; swap in a real provider before any real-user testing.
 - Google OAuth client ID/secret and Groq API key are unset in `.env`;

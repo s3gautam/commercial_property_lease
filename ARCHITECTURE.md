@@ -187,17 +187,31 @@ indistinguishable from a request that never reached this code at all.
 
 ## Watchlist
 
-`useWatchlistStore` (`apps/web/lib/store/watchlist-store.ts`, Zustand +
-`persist`/localStorage — unlike bookings, which now have a real
-backend `Visit` model, watchlist entries are still client-only) stores
-full `ApiProperty` objects, not just ids, so
-`/profile`'s Watchlist section can render `PropertyCard`s directly
-without refetching each one. The heart toggle
-(`isWatchlisted`/`toggle`) lives on `PropertyCard` itself (used by
-Browse, Recommended, and the Watchlist grid alike) and as a standalone
+Like bookings, the watchlist is a real per-tenant backend model now,
+not client-only storage — it used to be a Zustand + `persist`
+(localStorage) store, which meant "liking" a property was shared by
+whatever browser profile was open, not scoped to whichever account was
+actually logged in (two different accounts in the same browser saw the
+same watchlist). `WatchlistItem` (`app/models/watchlist.py`) is a thin
+`(tenant_id, property_id)` join row with a unique constraint per pair —
+it extends `ImmutableModel` rather than `TimestampedModel` since
+entries are only ever created or deleted, never updated in place.
+`WatchlistRepository.list_properties_for_tenant` joins straight to
+`Property` so the API returns full `PropertyRead` objects, not just
+ids. `GET/POST /api/v1/watchlist`, `DELETE /api/v1/watchlist/{id}`
+(`app/api/v1/watchlist.py`) are the endpoints; adding an already-saved
+property is a no-op (idempotent on the unique constraint) rather than
+an error, and so is removing one that was never saved.
+
+`apps/web/lib/hooks/use-watchlist.ts` wraps these in React Query hooks
+(`useWatchlistQuery`, `useIsWatchlisted`, `useAddToWatchlistMutation`,
+`useRemoveFromWatchlistMutation`), sharing one `["watchlist"]` cache
+key. The heart toggle lives on `PropertyCard` itself (used by Browse,
+Recommended, and the Watchlist grid alike) and as a standalone
 `WatchlistButton` overlaying the property detail page's hero photo —
-both read/write the same store, so the heart state is consistent
-everywhere a given listing appears.
+both call the same hooks, so the heart state is consistent everywhere
+a given listing appears, and both redirect to `/login` if clicked
+while logged out rather than silently writing to nobody's account.
 
 `Property.amenities` and `Property.nearby_landmarks` are computed
 `@property` accessors (not database columns) backed by the same

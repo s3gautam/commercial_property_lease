@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AmenitiesSection } from "@/components/amenities-section";
@@ -25,9 +25,13 @@ import { ScheduleVisitCta } from "@/components/schedule-visit-cta";
 import { ShareButton } from "@/components/share-button";
 import { apiClient } from "@/lib/api/client";
 import type { ApiProperty, ApiVerificationReport } from "@/lib/api/types";
+import {
+  useAddToWatchlistMutation,
+  useIsWatchlisted,
+  useRemoveFromWatchlistMutation,
+} from "@/lib/hooks/use-watchlist";
 import { propertyImageUrl, propertyMapEmbedUrl } from "@/lib/property-image";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
 const STATUS_STYLES: Record<string, string> = {
   listed: "bg-success/15 text-success",
@@ -354,13 +358,26 @@ function RiskGauge({ score }: { score: number }) {
 }
 
 function WatchlistButton({ property }: { property: ApiProperty }) {
-  const watchlisted = useWatchlistStore((state) => state.isWatchlisted(property.id));
-  const toggle = useWatchlistStore((state) => state.toggle);
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const watchlisted = useIsWatchlisted(property.id);
+  const addToWatchlist = useAddToWatchlistMutation();
+  const removeFromWatchlist = useRemoveFromWatchlistMutation();
 
   return (
     <button
       type="button"
-      onClick={() => toggle(property)}
+      onClick={() => {
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        if (watchlisted) {
+          removeFromWatchlist.mutate(property.id);
+        } else {
+          addToWatchlist.mutate(property.id);
+        }
+      }}
       aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
       aria-pressed={watchlisted}
       className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-black shadow-soft backdrop-blur transition-transform hover:scale-110 active:scale-95"

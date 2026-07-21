@@ -4,10 +4,16 @@ import { formatInr } from "@proplease/utils";
 import { Heart, MapPin, Ruler } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import type { ApiProperty } from "@/lib/api/types";
+import {
+  useAddToWatchlistMutation,
+  useIsWatchlisted,
+  useRemoveFromWatchlistMutation,
+} from "@/lib/hooks/use-watchlist";
 import { propertyImageUrl } from "@/lib/property-image";
-import { useWatchlistStore } from "@/lib/store/watchlist-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 
 export function PropertyCard({
   property,
@@ -16,8 +22,11 @@ export function PropertyCard({
   property: ApiProperty;
   animationDelayMs?: number;
 }) {
-  const watchlisted = useWatchlistStore((state) => state.isWatchlisted(property.id));
-  const toggleWatchlist = useWatchlistStore((state) => state.toggle);
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const watchlisted = useIsWatchlisted(property.id);
+  const addToWatchlist = useAddToWatchlistMutation();
+  const removeFromWatchlist = useRemoveFromWatchlistMutation();
 
   return (
     <Link
@@ -41,7 +50,15 @@ export function PropertyCard({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            toggleWatchlist(property);
+            if (!user) {
+              router.push("/login");
+              return;
+            }
+            if (watchlisted) {
+              removeFromWatchlist.mutate(property.id);
+            } else {
+              addToWatchlist.mutate(property.id);
+            }
           }}
           aria-label={watchlisted ? "Remove from watchlist" : "Add to watchlist"}
           aria-pressed={watchlisted}

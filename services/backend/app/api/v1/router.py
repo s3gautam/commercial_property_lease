@@ -8,6 +8,7 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.properties import router as properties_router
 from app.api.v1.tenant_profile import router as tenant_profile_router
 from app.api.v1.visits import router as visits_router
+from app.api.v1.watchlist import router as watchlist_router
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health_router)
@@ -18,3 +19,4 @@ api_v1_router.include_router(leases_router)
 api_v1_router.include_router(admin_router)
 api_v1_router.include_router(notifications_router)
 api_v1_router.include_router(visits_router)
+api_v1_router.include_router(watchlist_router)

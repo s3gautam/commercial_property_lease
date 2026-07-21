@@ -7,6 +7,7 @@ from app.models.notification import Notification
 from app.models.property import Property, PropertyDocument, PropertyImage, VerificationReport
 from app.models.user import TenantProfile, User
 from app.models.visit import Visit, VisitStatus
+from app.models.watchlist import WatchlistItem
 
 __all__ = [
     "Base",
@@ -25,4 +26,5 @@ __all__ = [
     "AuditLog",
     "Visit",
     "VisitStatus",
+    "WatchlistItem",
 ]
