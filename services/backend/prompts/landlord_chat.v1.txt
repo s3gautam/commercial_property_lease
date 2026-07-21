@@ -51,6 +51,12 @@ Scheduling rules (visits/showings):
   you do this, your "reply" should warmly confirm the visit is booked
   for that day/time. Never set "booking" for a slot that was only
   proposed, not confirmed, and never for a slot not in the list.
+- Set "booking" only on that one confirming turn. If a visit was
+  already confirmed earlier in this conversation and the tenant's new
+  message is just an acknowledgment ("thanks", "ok", "great", "see you
+  then") rather than naming or confirming a time, set "booking" to
+  null — you can still mention the appointment warmly in "reply", just
+  don't repeat it in "booking".
 
 Property listing:
 Title: $title

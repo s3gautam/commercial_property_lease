@@ -37,26 +37,44 @@ export function ChatWithLandlord({
 
       const booking = response.data.booking;
       if (booking) {
-        const conflict = checkConflict(propertyId, booking.date, booking.time);
-        if (conflict) {
-          // The agent already sent its confirmation text above based on
-          // availability alone - it has no visibility into the tenant's
-          // other locally-stored bookings, so a conflict can only be
-          // caught here. Follow up rather than silently booking anyway.
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "landlord",
-              content: `Actually, hold on — ${conflict.message.charAt(0).toLowerCase()}${conflict.message.slice(1)} Want to pick a different time?`,
-            },
-          ]);
-        } else {
-          addBooking({
-            propertyId,
-            propertyTitle,
-            dateKey: booking.date,
-            time: booking.time,
-          });
+        // The agent can re-mention an already-confirmed slot on a later
+        // turn (e.g. the tenant just says "thanks") without asking for
+        // anything new - that's a re-confirmation, not a new booking
+        // attempt, so it shouldn't be checked for conflicts against
+        // itself. Only treat it as new if it doesn't already match an
+        // existing upcoming booking for this exact property/date/time.
+        const alreadyBooked = useBookingsStore
+          .getState()
+          .bookings.some(
+            (b) =>
+              b.status === "upcoming" &&
+              b.propertyId === propertyId &&
+              b.dateKey === booking.date &&
+              b.time === booking.time,
+          );
+
+        if (!alreadyBooked) {
+          const conflict = checkConflict(propertyId, booking.date, booking.time);
+          if (conflict) {
+            // The agent already sent its confirmation text above based on
+            // availability alone - it has no visibility into the tenant's
+            // other locally-stored bookings, so a conflict can only be
+            // caught here. Follow up rather than silently booking anyway.
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "landlord",
+                content: `Actually, hold on — ${conflict.message.charAt(0).toLowerCase()}${conflict.message.slice(1)} Want to pick a different time?`,
+              },
+            ]);
+          } else {
+            addBooking({
+              propertyId,
+              propertyTitle,
+              dateKey: booking.date,
+              time: booking.time,
+            });
+          }
         }
       }
     },
