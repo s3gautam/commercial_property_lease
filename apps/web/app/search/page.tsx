@@ -30,7 +30,8 @@ export default function SearchPage() {
           </span>
           <h1 className="text-3xl font-semibold tracking-tight">AI Search</h1>
           <p className="mt-1.5 text-muted-foreground">
-            Describe the space you need in plain language.
+            Describe the space you need in plain language — type in any language, Hindi, Tamil,
+            English, or however you&apos;d ask a person.
           </p>
         </div>
 
@@ -44,7 +45,7 @@ export default function SearchPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="e.g. office space in Pune under ₹50,000"
+            placeholder="e.g. पुणे में ₹50,000 से कम किराए पर ऑफिस स्पेस"
             className="flex-1 rounded-full border border-border bg-surface px-4 py-3 text-sm shadow-soft outline-none transition-shadow focus:shadow-glow"
           />
           <button

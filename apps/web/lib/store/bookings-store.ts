@@ -1,6 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { apiClient } from "@/lib/api/client";
+
+function sendBookingEmail(
+  propertyTitle: string,
+  dateKey: string,
+  time: string,
+  action: "booked" | "rescheduled",
+) {
+  // Best-effort - a failed confirmation email should never block the
+  // booking itself, which already succeeded in local state above.
+  void apiClient
+    .post("/notifications/booking", { property_title: propertyTitle, date: dateKey, time, action })
+    .catch(() => undefined);
+}
+
 export interface Booking {
   id: string;
   propertyId: string;
@@ -67,7 +82,7 @@ export const useBookingsStore = create<BookingsState>()(
 
         return null;
       },
-      addBooking: (booking) =>
+      addBooking: (booking) => {
         set((state) => ({
           bookings: [
             ...state.bookings,
@@ -78,17 +93,22 @@ export const useBookingsStore = create<BookingsState>()(
               createdAt: new Date().toISOString(),
             },
           ],
-        })),
+        }));
+        sendBookingEmail(booking.propertyTitle, booking.dateKey, booking.time, "booked");
+      },
       cancelBooking: (id) =>
         set((state) => ({
           bookings: state.bookings.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
         })),
-      rescheduleBooking: (id, dateKey, time) =>
+      rescheduleBooking: (id, dateKey, time) => {
+        const booking = get().bookings.find((b) => b.id === id);
         set((state) => ({
           bookings: state.bookings.map((b) =>
             b.id === id ? { ...b, dateKey, time, status: "upcoming" } : b,
           ),
-        })),
+        }));
+        if (booking) sendBookingEmail(booking.propertyTitle, dateKey, time, "rescheduled");
+      },
     }),
     { name: "proplease-bookings" },
   ),

@@ -79,6 +79,15 @@ missing before this should hold real user data.
    - Leave `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` blank unless you've
      set up Google OAuth — neither app's UI wires up Google Sign-In yet
      regardless (see TASKS.md)
+   - `SMTP_HOST`/`SMTP_PORT`/`SMTP_USERNAME`/`SMTP_PASSWORD`/
+     `SMTP_FROM_EMAIL` — set these to send real OTP and booking
+     confirmation/reschedule emails instead of just logging them. Set
+     them directly as Railway environment variables, never committed to
+     the repo. For Gmail: `smtp.gmail.com`, port `587`, and an
+     [App Password](https://myaccount.google.com/apppasswords) as
+     `SMTP_PASSWORD` — not your normal Google password, since Gmail
+     rejects plain-password SMTP logins. Leave `SMTP_HOST` unset to keep
+     the current logging-only behavior.
 5. Railway assigns a public domain (Settings → Networking → Generate
    Domain). That's your backend URL.
 

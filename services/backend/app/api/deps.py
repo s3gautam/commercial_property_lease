@@ -5,13 +5,18 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db_session
 from app.core.redis import get_redis
 from app.core.security import InvalidTokenError, TokenType, decode_token
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.services.google_oauth import GoogleOAuthService
-from app.services.notification_sender import ConsoleNotificationSender
+from app.services.notification_sender import (
+    ConsoleNotificationSender,
+    NotificationSender,
+    SmtpNotificationSender,
+)
 from app.services.otp_service import OtpService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -23,8 +28,25 @@ def get_user_repository(
     return UserRepository(session)
 
 
+def get_notification_sender() -> NotificationSender:
+    """Real SMTP delivery once SMTP_HOST is configured; otherwise logs
+    instead of sending, so local dev never needs real credentials."""
+    settings = get_settings()
+    if not settings.smtp_host:
+        return ConsoleNotificationSender()
+
+    return SmtpNotificationSender(
+        host=settings.smtp_host,
+        port=settings.smtp_port,
+        username=settings.smtp_username,
+        password=settings.smtp_password,
+        from_email=settings.smtp_from_email,
+        use_tls=settings.smtp_use_tls,
+    )
+
+
 def get_otp_service() -> OtpService:
-    return OtpService(get_redis(), ConsoleNotificationSender())
+    return OtpService(get_redis(), get_notification_sender())
 
 
 def get_google_oauth_service() -> GoogleOAuthService:

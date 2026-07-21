@@ -72,10 +72,15 @@ export function ChatWithLandlord({
   };
 
   return (
-    <section className="mt-5 rounded-2xl border border-border bg-surface p-6 shadow-soft">
-      <div className="flex items-center gap-2">
-        <MessagesSquare className="h-4 w-4 text-accent" strokeWidth={2} />
-        <h2 className="font-medium">Chat with landlord</h2>
+    <section className="mt-6 rounded-3xl border-2 border-accent/30 bg-surface p-6 shadow-card">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-gradient text-white shadow-glow">
+          <MessagesSquare className="h-4.5 w-4.5" strokeWidth={2.25} />
+        </span>
+        <div>
+          <h2 className="font-semibold tracking-tight">Chat with Landlord AI</h2>
+          <p className="text-xs text-muted-foreground">Instant answers, no digging required</p>
+        </div>
       </div>
 
       {!user ? (
@@ -83,14 +88,15 @@ export function ChatWithLandlord({
           <Link href="/login" className="text-accent underline underline-offset-4">
             Log in
           </Link>{" "}
-          to message the landlord about this listing.
+          to chat with Landlord AI about this listing.
         </p>
       ) : (
         <div className="mt-4">
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Ask about availability, move-in dates, parking — anything. The landlord typically
-              replies within moments.
+              Ask anything about this space — rent, amenities, nearby landmarks, move-in dates,
+              or book a visit — and get an answer immediately, without scrolling through the
+              listing yourself.
             </p>
           ) : (
             <div ref={scrollRef} className="flex max-h-80 flex-col gap-3 overflow-y-auto pr-1">
@@ -132,7 +138,7 @@ export function ChatWithLandlord({
             <input
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Message the landlord…"
+              placeholder="Ask Landlord AI anything…"
               className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-shadow focus:shadow-glow"
             />
             <button

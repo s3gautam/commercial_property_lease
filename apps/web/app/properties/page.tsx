@@ -1,12 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Globe2,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import { PropertyCard } from "@/components/property-card";
 import { apiClient } from "@/lib/api/client";
-import type { ApiProperty } from "@/lib/api/types";
+import type { ApiProperty, ApiPropertySearchResponse } from "@/lib/api/types";
 import { AMENITY_OPTIONS, PROPERTY_TYPES } from "@/lib/property-options";
 
 const PAGE_SIZE = 20;
@@ -15,6 +23,17 @@ export default function PropertiesPage() {
   const [page, setPage] = useState(1);
   const [city, setCity] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
+
+  const aiSearch = useMutation({
+    mutationFn: (q: string) =>
+      apiClient.get<ApiPropertySearchResponse>(`/properties/search?q=${encodeURIComponent(q)}`),
+  });
+  const aiResults = aiSearch.data?.data;
+  const clearAiSearch = () => {
+    setAiQuery("");
+    aiSearch.reset();
+  };
 
   const [minRent, setMinRent] = useState("");
   const [maxRent, setMaxRent] = useState("");
@@ -89,6 +108,84 @@ export default function PropertiesPage() {
         </p>
       </div>
 
+      <div className="mb-6 rounded-2xl border-2 border-accent/30 bg-surface p-4 shadow-soft sm:p-5">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-gradient text-white shadow-glow">
+            <Sparkles className="h-4 w-4" strokeWidth={2.25} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold tracking-tight">AI Search</p>
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Globe2 className="h-3 w-3" strokeWidth={2} />
+              Type in any language — Hindi, Tamil, English, or however you&apos;d ask a person
+            </p>
+          </div>
+        </div>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (aiQuery.trim()) aiSearch.mutate(aiQuery);
+          }}
+        >
+          <input
+            value={aiQuery}
+            onChange={(event) => setAiQuery(event.target.value)}
+            placeholder="e.g. पुणे में ₹50,000 से कम किराए पर ऑफिस स्पेस"
+            className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none transition-shadow focus:shadow-glow"
+          />
+          <button
+            type="submit"
+            disabled={aiSearch.isPending || !aiQuery.trim()}
+            className="rounded-full bg-accent-gradient px-5 py-2.5 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {aiSearch.isPending ? "Searching…" : "Search"}
+          </button>
+          {aiResults && (
+            <button
+              type="button"
+              onClick={clearAiSearch}
+              className="flex items-center gap-1 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium transition-colors hover:bg-surface-2"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          )}
+        </form>
+
+        {aiSearch.isError && (
+          <p className="mt-3 text-sm text-danger">
+            Something went wrong running that search. Please try again.
+          </p>
+        )}
+
+        {aiResults?.criteria.explanation && (
+          <p className="mt-3 rounded-xl bg-surface-2 px-4 py-2.5 text-sm text-muted-foreground">
+            {aiResults.criteria.explanation}
+          </p>
+        )}
+      </div>
+
+      {aiResults ? (
+        <>
+          {aiResults.properties.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border py-16 text-center text-muted-foreground">
+              No properties matched that search.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {aiResults.properties.map((property, index) => (
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  animationDelayMs={Math.min(index, 8) * 40}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+      <>
       <div className="mb-8 flex flex-wrap items-center gap-3">
         <div className="relative max-w-xs flex-1 min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -287,6 +384,8 @@ export default function PropertiesPage() {
             Next <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      )}
+      </>
       )}
     </main>
   );

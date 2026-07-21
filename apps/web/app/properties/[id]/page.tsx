@@ -111,6 +111,8 @@ export default function PropertyDetailPage() {
 
       <ScheduleVisitCta propertyId={property.id} propertyTitle={property.title} />
 
+      <ChatWithLandlord propertyId={property.id} propertyTitle={property.title} />
+
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat
           icon={IndianRupee}
@@ -148,8 +150,6 @@ export default function PropertyDetailPage() {
       </div>
 
       <VerificationSection property={property} />
-
-      <ChatWithLandlord propertyId={property.id} propertyTitle={property.title} />
 
       <RecommendedProperties current={property} />
     </main>

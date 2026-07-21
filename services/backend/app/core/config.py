@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     s3_bucket: str = ""
     s3_endpoint_url: str = ""
 
+    # Transactional email (booking confirmations/reschedules). Unset host
+    # falls back to ConsoleNotificationSender (logs instead of sending) so
+    # local dev never needs real SMTP credentials.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_use_tls: bool = True
+
     # SSL handling: centralized so no module ever sets verify=False directly.
     # See app.core.http_client for the single HTTP client that reads these.
     disable_ssl_verify: bool = False

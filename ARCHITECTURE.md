@@ -60,6 +60,16 @@ Application -> Agent -> Prompt Builder -> LLM Gateway -> Groq -> Output Validato
 | `LeaseSummaryAgent` | a lease document's full text | plain-language summary | `POST /api/v1/leases/{id}/summary` |
 | `LandlordChatAgent` | a `Property` + tenant message + conversation history | in-character landlord reply | `POST /api/v1/properties/{id}/chat` |
 
+`SearchAgent`'s prompt (`prompts/property_search.v1.txt`) explicitly
+allows the tenant's query in any language: it instructs the LLM to
+translate the extracted `city`/`keywords` to English before returning
+them (since listing titles/descriptions/cities are stored in English
+and matched via `ILIKE`), while writing `explanation` back in whatever
+language the tenant used. The same AI Search UI (`/search`, and now a
+dedicated panel at the top of `/properties`, the browse page) surfaces
+this with a "type in any language" hint rather than leaving it
+undiscoverable.
+
 Every agent's `run()` degrades gracefully on a malformed/unparseable LLM
 response — it falls back to a safe default (e.g. `SearchAgent` falls back
 to raw-keyword search; `VerificationAgent` returns a conservative
@@ -83,7 +93,13 @@ because those require a real `landlord_id`, and seeded/demo properties
 don't have one (`Property.landlord_id` is nullable and typically unset).
 The client round-trips the conversation history in each request instead.
 `apps/web`'s `ChatWithLandlord` component (`components/chat-with-
-landlord.tsx`) keeps that history in local component state.
+landlord.tsx`) keeps that history in local component state. It's
+labeled "Chat with Landlord AI" in the UI (the backend/agent naming is
+unchanged) and, given how central it is to the product — a tenant
+shouldn't need to read the rest of the listing to get an answer — it's
+positioned directly under the "Schedule a visit" CTA at the top of the
+property detail page, ahead of the stats grid, About, Amenities,
+Nearby, Location, and Verification sections.
 
 The agent also outputs structured JSON (`gateway.complete(...,
 json_mode=True)`) with a `booking` field alongside `reply`, so it can
@@ -136,6 +152,21 @@ booking-aware: if the tenant already has an upcoming visit for *this*
 property, it replaces the "Schedule a visit" button with the
 appointment's date/time plus Reschedule/Cancel, rather than only
 catching the conflict after the fact.
+
+Since bookings themselves only exist in browser localStorage, sending a
+confirmation email requires going through the backend anyway (no SMTP
+from the browser). `useBookingsStore.addBooking`/`rescheduleBooking`
+fire-and-forget a `POST /api/v1/notifications/booking` call after
+updating local state — best-effort, failures are swallowed so a flaky
+email never blocks a booking that already succeeded locally. The
+endpoint (`api/v1/notifications.py`) reads the tenant's email off
+`current_user` (not the request body, so it can't be spoofed) and
+sends via `BookingNotificationService`, which drafts the subject/body
+and hands off to whatever `NotificationSender` `get_notification_sender()`
+resolves: `SmtpNotificationSender` if `SMTP_HOST` is configured, else
+the existing `ConsoleNotificationSender` (logs instead of sending, so
+local dev never needs real SMTP credentials). Same email copy is used
+for both "booked" and "rescheduled", just with different wording.
 
 ## Watchlist
 

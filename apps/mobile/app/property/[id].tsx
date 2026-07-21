@@ -55,10 +55,10 @@ export default function PropertyDetailScreen() {
       <VerificationSection propertyId={property.id} />
 
       <View className="mt-4 rounded-lg border border-dashed border-gray-300 p-4 dark:border-gray-700">
-        <Text className="font-medium text-black dark:text-white">Chat with landlord</Text>
+        <Text className="font-medium text-black dark:text-white">Chat with Landlord AI</Text>
         <Text className="mt-1 text-gray-500 dark:text-gray-400">
-          Chat threads are not implemented yet — this listing will let you message the landlord
-          directly once that lands.
+          Not implemented on mobile yet — it&apos;s live on the web app, where Landlord AI
+          answers questions about this listing instantly.
         </Text>
       </View>
     </ScrollView>
