@@ -5,9 +5,12 @@ from datetime import date
 from app.ai.base_agent import AgentResponse, BaseAgent
 from app.ai.output_validator import OutputValidationError, parse_json_response, require_keys
 from app.ai.prompt_builder import PromptBuilder
+from app.core.logging import get_logger
 from app.models.property import Property
 from app.services.property_facts import NearbyLandmark
 from app.services.visit_schedule import DaySlots, get_available_slots, is_slot_available
+
+logger = get_logger(__name__)
 
 SYSTEM_PROMPT = (
     "You are role-playing as a commercial property landlord replying to a "
@@ -81,6 +84,18 @@ class LandlordChatAgent(BaseAgent[LandlordChatReply]):
             require_keys(payload, "reply")
             result = LandlordChatReply(reply=str(payload["reply"]).strip())
             result = _attach_validated_booking(result, payload.get("booking"), property_.id)
+            # The reply's own text can sound like a confirmation even when
+            # the model didn't set (or set an invalid) structured booking -
+            # logged so a live mismatch is visible in Deploy Logs instead of
+            # only showing up as "the tenant said it worked but nothing was
+            # booked" with no way to tell why.
+            logger.info(
+                "landlord_chat.booking_claim",
+                property_id=str(property_.id),
+                raw_booking=payload.get("booking"),
+                accepted_date=result.booking_date,
+                accepted_time=result.booking_time,
+            )
             validation_status = "valid" if self.validate(result) else "invalid"
         except (OutputValidationError, TypeError, ValueError):
             result = LandlordChatReply(reply="")
