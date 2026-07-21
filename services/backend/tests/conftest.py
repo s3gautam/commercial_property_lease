@@ -32,8 +32,8 @@ async def _clean_database() -> AsyncIterator[None]:
             sa.text(
                 "TRUNCATE TABLE users, tenant_profiles, properties, property_images, "
                 "property_documents, verification_reports, chat_threads, messages, "
-                "leases, lease_versions, kyc_verifications, notifications, audit_logs "
-                "RESTART IDENTITY CASCADE"
+                "leases, lease_versions, kyc_verifications, notifications, audit_logs, "
+                "visits RESTART IDENTITY CASCADE"
             )
         )
 

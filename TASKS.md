@@ -274,24 +274,20 @@ None known.
 ## Technical Debt
 
 - No CI pipeline configured yet.
-- "Schedule a visit" (property detail page primary CTA) and its
-  bookings (viewable/cancellable/reschedulable from `/profile`) are
-  entirely client-side — `apps/web/lib/store/bookings-store.ts` is a
-  localStorage-persisted Zustand store, not a backend table. There's no
-  `Visit`/`Booking` model, so bookings don't survive clearing browser
-  storage, aren't visible to any future landlord-side portal, and
-  reasonably could conflict (two tenants "booking" the same displayed
-  slot client-side, since availability is a deterministic function, not
-  a real shared calendar with locking). `apps/mobile` doesn't have this
-  UI. The chat agent can also confirm a booking directly (see
-  ARCHITECTURE.md's AI Layer section) through the same client-side
-  store. `addBooking`/`rescheduleBooking` now also fire a best-effort
-  `POST /api/v1/notifications/booking` to email the tenant a
-  confirmation, but since the booking itself lives only in
-  localStorage, a `SmtpNotificationSender` failure or dropped request
-  can silently leave the tenant without an email for a booking that
-  still exists — there's no retry/outbox, matching this feature's
-  existing "no real backend record" caveat.
+- "Schedule a visit" (property detail page primary CTA) is now backed
+  by a real `Visit` table (`app/models/visit.py`,
+  `POST/GET /api/v1/visits`, `PATCH .../reschedule`,
+  `POST .../cancel`), not client-only localStorage — bookings survive
+  clearing browser storage, and the confirmation email is sent
+  server-side in the same request as part of `VisitService.book_visit`/
+  `reschedule_visit`, not a separate best-effort client call. Remaining
+  gaps: `apps/mobile` doesn't have this UI at all; there's still no
+  landlord-side portal to see/manage these visits from the other side;
+  and availability itself (`visit_schedule.py`/`property-schedule.ts`)
+  is still a deterministic function rather than a real shared calendar
+  with locking, so two tenants could still both see (though not both
+  successfully book, since `VisitService` re-checks availability and
+  conflicts at write time) the same slot as open.
 - Currency is now ₹ (Indian digit grouping — lakh/crore) everywhere via
   `packages/utils::formatInr`, replacing the earlier `$`/USD
   formatting. `prompts/property_search.v1.txt` was updated to ask the

@@ -5,8 +5,14 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ScheduleVisitModal } from "@/components/schedule-visit-modal";
+import {
+  toVisitErrorMessage,
+  useBookVisitMutation,
+  useCancelVisitMutation,
+  useRescheduleVisitMutation,
+  useVisitsQuery,
+} from "@/lib/hooks/use-visits";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useBookingsStore } from "@/lib/store/bookings-store";
 
 const DATE_LABEL = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -22,15 +28,14 @@ export function ScheduleVisitCta({
   propertyTitle: string;
 }) {
   const user = useAuthStore((state) => state.user);
-  const bookings = useBookingsStore((state) => state.bookings);
-  const addBooking = useBookingsStore((state) => state.addBooking);
-  const rescheduleBooking = useBookingsStore((state) => state.rescheduleBooking);
-  const cancelBooking = useBookingsStore((state) => state.cancelBooking);
-  const checkConflict = useBookingsStore((state) => state.checkConflict);
+  const visitsQuery = useVisitsQuery();
+  const bookVisit = useBookVisitMutation();
+  const rescheduleVisit = useRescheduleVisitMutation();
+  const cancelVisit = useCancelVisitMutation();
   const [open, setOpen] = useState(false);
 
-  const existingBooking = bookings.find(
-    (b) => b.propertyId === propertyId && b.status === "upcoming",
+  const existingBooking = (visitsQuery.data?.data ?? []).find(
+    (v) => v.property_id === propertyId && v.status === "upcoming",
   );
 
   return (
@@ -44,7 +49,8 @@ export function ScheduleVisitCta({
             <>
               <h2 className="font-semibold">Visit scheduled</h2>
               <p className="text-sm text-white/80">
-                {DATE_LABEL.format(new Date(existingBooking.dateKey))} at {existingBooking.time}
+                {DATE_LABEL.format(new Date(existingBooking.visit_date))} at{" "}
+                {existingBooking.visit_time}
               </p>
             </>
           ) : (
@@ -70,8 +76,9 @@ export function ScheduleVisitCta({
             </button>
             <button
               type="button"
-              onClick={() => cancelBooking(existingBooking.id)}
-              className="flex-1 rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:flex-none"
+              disabled={cancelVisit.isPending}
+              onClick={() => cancelVisit.mutate(existingBooking.id)}
+              className="flex-1 rounded-full border border-white/40 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 sm:flex-none"
             >
               Cancel
             </button>
@@ -100,17 +107,25 @@ export function ScheduleVisitCta({
           propertyTitle={propertyTitle}
           open={open}
           onClose={() => setOpen(false)}
-          onConfirm={(dateKey, time) => {
-            if (existingBooking) {
-              const conflict = checkConflict(propertyId, dateKey, time, existingBooking.id);
-              if (conflict) return conflict.message;
-              rescheduleBooking(existingBooking.id, dateKey, time);
+          onConfirm={async (visitDate, visitTime) => {
+            try {
+              if (existingBooking) {
+                await rescheduleVisit.mutateAsync({
+                  visitId: existingBooking.id,
+                  visit_date: visitDate,
+                  visit_time: visitTime,
+                });
+              } else {
+                await bookVisit.mutateAsync({
+                  property_id: propertyId,
+                  visit_date: visitDate,
+                  visit_time: visitTime,
+                });
+              }
               return null;
+            } catch (error) {
+              return await toVisitErrorMessage(error);
             }
-            const conflict = checkConflict(propertyId, dateKey, time);
-            if (conflict) return conflict.message;
-            addBooking({ propertyId, propertyTitle, dateKey, time });
-            return null;
           }}
         />
       )}

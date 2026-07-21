@@ -13,9 +13,13 @@ interface ScheduleVisitModalProps {
   propertyTitle: string;
   open: boolean;
   onClose: () => void;
-  /** Return an error message to reject the slot (e.g. a booking
-   * conflict) and keep the picker open, or null/undefined to confirm. */
-  onConfirm: (dateKey: string, time: string) => string | null | undefined;
+  /** Return (or resolve to) an error message to reject the slot (e.g. a
+   * booking conflict) and keep the picker open, or null/undefined to
+   * confirm. Booking now goes through the backend, so this is async. */
+  onConfirm: (
+    dateKey: string,
+    time: string,
+  ) => string | null | undefined | Promise<string | null | undefined>;
 }
 
 export function ScheduleVisitModal({
@@ -32,12 +36,14 @@ export function ScheduleVisitModal({
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ dateKey: string; time: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSelectedTime(null);
       setConfirmed(null);
       setError(null);
+      setSubmitting(false);
     }
   }, [open]);
 
@@ -54,16 +60,21 @@ export function ScheduleVisitModal({
 
   const slots = getTimeSlots(propertyId, selectedDate);
 
-  const handleConfirm = () => {
-    if (!selectedTime) return;
+  const handleConfirm = async () => {
+    if (!selectedTime || submitting) return;
     const key = dateKey(selectedDate);
-    const conflictMessage = onConfirm(key, selectedTime);
-    if (conflictMessage) {
-      setError(conflictMessage);
-      return;
+    setSubmitting(true);
+    try {
+      const conflictMessage = await onConfirm(key, selectedTime);
+      if (conflictMessage) {
+        setError(conflictMessage);
+        return;
+      }
+      setError(null);
+      setConfirmed({ dateKey: key, time: selectedTime });
+    } finally {
+      setSubmitting(false);
     }
-    setError(null);
-    setConfirmed({ dateKey: key, time: selectedTime });
   };
 
   return (
@@ -173,10 +184,10 @@ export function ScheduleVisitModal({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={!selectedTime}
+              disabled={!selectedTime || submitting}
               className="mt-6 w-full rounded-full bg-accent-gradient px-5 py-3 text-sm font-medium text-white shadow-glow transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
             >
-              {selectedTime ? `Confirm ${selectedTime}` : "Select a time"}
+              {submitting ? "Booking…" : selectedTime ? `Confirm ${selectedTime}` : "Select a time"}
             </button>
 
             {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}

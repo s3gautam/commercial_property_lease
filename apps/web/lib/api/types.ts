@@ -95,3 +95,14 @@ export interface ApiChatReply {
   reply: string;
   booking: ApiChatBooking | null;
 }
+
+export interface ApiVisit {
+  id: string;
+  property_id: string;
+  property_title: string;
+  tenant_id: string;
+  visit_date: string;
+  visit_time: string;
+  status: "upcoming" | "cancelled";
+  created_at: string;
+}

@@ -10,8 +10,13 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PropertyCard } from "@/components/property-card";
 import { ScheduleVisitModal } from "@/components/schedule-visit-modal";
 import { apiClient } from "@/lib/api/client";
-import type { ApiTenantProfile } from "@/lib/api/types";
-import { type Booking, useBookingsStore } from "@/lib/store/bookings-store";
+import type { ApiTenantProfile, ApiVisit } from "@/lib/api/types";
+import {
+  toVisitErrorMessage,
+  useCancelVisitMutation,
+  useRescheduleVisitMutation,
+  useVisitsQuery,
+} from "@/lib/hooks/use-visits";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useWatchlistStore } from "@/lib/store/watchlist-store";
 
@@ -26,15 +31,14 @@ export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   const hasHydrated = useAuthStore((state) => state.hasHydrated);
 
-  const bookings = useBookingsStore((state) => state.bookings);
-  const cancelBooking = useBookingsStore((state) => state.cancelBooking);
-  const rescheduleBooking = useBookingsStore((state) => state.rescheduleBooking);
-  const checkConflict = useBookingsStore((state) => state.checkConflict);
+  const visitsQuery = useVisitsQuery();
+  const rescheduleVisit = useRescheduleVisitMutation();
+  const cancelVisit = useCancelVisitMutation();
   const watchlist = useWatchlistStore((state) => state.properties);
 
-  const [rescheduling, setRescheduling] = useState<Booking | null>(null);
-  const [confirmingReschedule, setConfirmingReschedule] = useState<Booking | null>(null);
-  const [confirmingCancel, setConfirmingCancel] = useState<Booking | null>(null);
+  const [rescheduling, setRescheduling] = useState<ApiVisit | null>(null);
+  const [confirmingReschedule, setConfirmingReschedule] = useState<ApiVisit | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState<ApiVisit | null>(null);
 
   useEffect(() => {
     if (hasHydrated && !user) router.replace("/login");
@@ -49,10 +53,11 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const upcoming = bookings
-    .filter((b) => b.status === "upcoming")
-    .sort((a, b) => (a.dateKey + a.time).localeCompare(b.dateKey + b.time));
-  const cancelled = bookings.filter((b) => b.status === "cancelled");
+  const visits = visitsQuery.data?.data ?? [];
+  const upcoming = visits
+    .filter((v) => v.status === "upcoming")
+    .sort((a, b) => (a.visit_date + a.visit_time).localeCompare(b.visit_date + b.visit_time));
+  const cancelled = visits.filter((v) => v.status === "cancelled");
   const profile = profileQuery.data?.data;
 
   return (
@@ -91,36 +96,36 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          {upcoming.map((booking) => (
+          {upcoming.map((visit) => (
             <div
-              key={booking.id}
+              key={visit.id}
               className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <Link
-                  href={`/properties/${booking.propertyId}`}
+                  href={`/properties/${visit.property_id}`}
                   className="flex items-center gap-1.5 font-medium hover:text-accent"
                 >
                   <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                  <span className="line-clamp-1">{booking.propertyTitle}</span>
+                  <span className="line-clamp-1">{visit.property_title}</span>
                 </Link>
                 <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                   <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2} />
-                  {DATE_LABEL.format(new Date(booking.dateKey))} at {booking.time}
+                  {DATE_LABEL.format(new Date(visit.visit_date))} at {visit.visit_time}
                 </p>
               </div>
 
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setConfirmingReschedule(booking)}
+                  onClick={() => setConfirmingReschedule(visit)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-surface-2"
                 >
                   Reschedule
                 </button>
                 <button
                   type="button"
-                  onClick={() => setConfirmingCancel(booking)}
+                  onClick={() => setConfirmingCancel(visit)}
                   className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
                 >
                   Cancel
@@ -135,19 +140,19 @@ export default function ProfilePage() {
         <>
           <h2 className="mt-10 text-lg font-semibold tracking-tight">Cancelled</h2>
           <div className="mt-4 flex flex-col gap-3">
-            {cancelled.map((booking) => (
+            {cancelled.map((visit) => (
               <div
-                key={booking.id}
+                key={visit.id}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border p-4 text-muted-foreground"
               >
                 <div>
                   <p className="flex items-center gap-1.5 font-medium line-through">
                     <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                    <span className="line-clamp-1">{booking.propertyTitle}</span>
+                    <span className="line-clamp-1">{visit.property_title}</span>
                   </p>
                   <p className="mt-1 flex items-center gap-1.5 text-sm">
                     <CalendarX2 className="h-3.5 w-3.5" strokeWidth={2} />
-                    {DATE_LABEL.format(new Date(booking.dateKey))} at {booking.time}
+                    {DATE_LABEL.format(new Date(visit.visit_date))} at {visit.visit_time}
                   </p>
                 </div>
               </div>
@@ -173,15 +178,21 @@ export default function ProfilePage() {
 
       {rescheduling && (
         <ScheduleVisitModal
-          propertyId={rescheduling.propertyId}
-          propertyTitle={rescheduling.propertyTitle}
+          propertyId={rescheduling.property_id}
+          propertyTitle={rescheduling.property_title}
           open={Boolean(rescheduling)}
           onClose={() => setRescheduling(null)}
-          onConfirm={(dateKey, time) => {
-            const conflict = checkConflict(rescheduling.propertyId, dateKey, time, rescheduling.id);
-            if (conflict) return conflict.message;
-            rescheduleBooking(rescheduling.id, dateKey, time);
-            return null;
+          onConfirm={async (visitDate, visitTime) => {
+            try {
+              await rescheduleVisit.mutateAsync({
+                visitId: rescheduling.id,
+                visit_date: visitDate,
+                visit_time: visitTime,
+              });
+              return null;
+            } catch (error) {
+              return await toVisitErrorMessage(error);
+            }
           }}
         />
       )}
@@ -191,7 +202,7 @@ export default function ProfilePage() {
         title="Reschedule this visit?"
         description={
           confirmingReschedule
-            ? `You'll pick a new time for your visit to ${confirmingReschedule.propertyTitle}, currently set for ${DATE_LABEL.format(new Date(confirmingReschedule.dateKey))} at ${confirmingReschedule.time}.`
+            ? `You'll pick a new time for your visit to ${confirmingReschedule.property_title}, currently set for ${DATE_LABEL.format(new Date(confirmingReschedule.visit_date))} at ${confirmingReschedule.visit_time}.`
             : ""
         }
         confirmLabel="Pick a new time"
@@ -206,13 +217,13 @@ export default function ProfilePage() {
         title="Cancel this visit?"
         description={
           confirmingCancel
-            ? `This will cancel your visit to ${confirmingCancel.propertyTitle} on ${DATE_LABEL.format(new Date(confirmingCancel.dateKey))} at ${confirmingCancel.time}.`
+            ? `This will cancel your visit to ${confirmingCancel.property_title} on ${DATE_LABEL.format(new Date(confirmingCancel.visit_date))} at ${confirmingCancel.visit_time}.`
             : ""
         }
         confirmLabel="Cancel visit"
         danger
         onConfirm={() => {
-          if (confirmingCancel) cancelBooking(confirmingCancel.id);
+          if (confirmingCancel) cancelVisit.mutate(confirmingCancel.id);
         }}
         onClose={() => setConfirmingCancel(null)}
       />

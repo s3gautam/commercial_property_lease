@@ -1,8 +1,9 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
@@ -46,6 +47,24 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_v1_router, prefix=settings.api_v1_prefix)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
+        # Every raise HTTPException(...) across the API (PropertyNotFoundError,
+        # VisitConflictError, etc.) should surface its real message to the
+        # frontend's ApiClient, which expects the {"success", "error"}
+        # envelope shape (see packages/api/src/client.ts) - not FastAPI's
+        # default {"detail": ...} shape, which ApiClient can't parse and
+        # silently reduces to a generic "Request failed".
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "success": False,
+                "data": None,
+                "meta": None,
+                "error": {"code": f"HTTP_{exc.status_code}", "message": exc.detail},
+            },
+        )
 
     return app
 

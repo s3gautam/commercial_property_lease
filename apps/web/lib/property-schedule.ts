@@ -1,9 +1,8 @@
-// Visit scheduling has no backend counterpart yet (no Visit/Booking model,
-// no real landlord/broker calendar) - available slots are deterministic
-// per property+date so the same day always shows the same availability,
-// and bookings themselves are stored client-side (see
-// lib/store/bookings-store.ts). This is filler consistent with the rest
-// of the demo's dummy data, not a real scheduling backend.
+// There's still no real landlord/broker calendar - available slots are
+// deterministic per property+date (mirrored in the backend's
+// app/services/visit_schedule.py) so the same day always shows the same
+// availability. Visits themselves are real now (services/backend's Visit
+// model, via apps/web/lib/hooks/use-visits.ts), just not the slots.
 
 export interface TimeSlot {
   time: string;

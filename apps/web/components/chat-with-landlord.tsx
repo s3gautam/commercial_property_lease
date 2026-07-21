@@ -7,19 +7,18 @@ import { useEffect, useRef, useState } from "react";
 
 import { apiClient } from "@/lib/api/client";
 import type { ApiChatMessage, ApiChatReply } from "@/lib/api/types";
+import { toVisitErrorMessage, useBookVisitMutation, useVisitsQuery } from "@/lib/hooks/use-visits";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useBookingsStore } from "@/lib/store/bookings-store";
 
 export function ChatWithLandlord({
   propertyId,
-  propertyTitle,
 }: {
   propertyId: string;
   propertyTitle: string;
 }) {
   const user = useAuthStore((state) => state.user);
-  const addBooking = useBookingsStore((state) => state.addBooking);
-  const checkConflict = useBookingsStore((state) => state.checkConflict);
+  const visitsQuery = useVisitsQuery();
+  const bookVisit = useBookVisitMutation();
   const [messages, setMessages] = useState<ApiChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -36,47 +35,41 @@ export function ChatWithLandlord({
       setMessages((prev) => [...prev, { role: "landlord", content: response.data!.reply }]);
 
       const booking = response.data.booking;
-      if (booking) {
-        // The agent can re-mention an already-confirmed slot on a later
-        // turn (e.g. the tenant just says "thanks") without asking for
-        // anything new - that's a re-confirmation, not a new booking
-        // attempt, so it shouldn't be checked for conflicts against
-        // itself. Only treat it as new if it doesn't already match an
-        // existing upcoming booking for this exact property/date/time.
-        const alreadyBooked = useBookingsStore
-          .getState()
-          .bookings.some(
-            (b) =>
-              b.status === "upcoming" &&
-              b.propertyId === propertyId &&
-              b.dateKey === booking.date &&
-              b.time === booking.time,
-          );
+      if (!booking) return;
 
-        if (!alreadyBooked) {
-          const conflict = checkConflict(propertyId, booking.date, booking.time);
-          if (conflict) {
+      // The agent can re-mention an already-confirmed slot on a later turn
+      // (e.g. the tenant just says "thanks") without asking for anything
+      // new - that's a re-confirmation, not a new booking attempt, so it
+      // shouldn't be sent to the backend again (which would otherwise
+      // reject it as a conflict against the visit it just created).
+      const alreadyBooked = (visitsQuery.data?.data ?? []).some(
+        (v) =>
+          v.status === "upcoming" &&
+          v.property_id === propertyId &&
+          v.visit_date === booking.date &&
+          v.visit_time === booking.time,
+      );
+      if (alreadyBooked) return;
+
+      bookVisit.mutate(
+        { property_id: propertyId, visit_date: booking.date, visit_time: booking.time },
+        {
+          onError: async (error) => {
             // The agent already sent its confirmation text above based on
             // availability alone - it has no visibility into the tenant's
-            // other locally-stored bookings, so a conflict can only be
-            // caught here. Follow up rather than silently booking anyway.
+            // other visits, so a conflict can only be caught here. Follow
+            // up rather than silently booking anyway.
+            const message = await toVisitErrorMessage(error);
             setMessages((prev) => [
               ...prev,
               {
                 role: "landlord",
-                content: `Actually, hold on — ${conflict.message.charAt(0).toLowerCase()}${conflict.message.slice(1)} Want to pick a different time?`,
+                content: `Actually, hold on — ${message.charAt(0).toLowerCase()}${message.slice(1)} Want to pick a different time?`,
               },
             ]);
-          } else {
-            addBooking({
-              propertyId,
-              propertyTitle,
-              dateKey: booking.date,
-              time: booking.time,
-            });
-          }
-        }
-      }
+          },
+        },
+      );
     },
   });
 

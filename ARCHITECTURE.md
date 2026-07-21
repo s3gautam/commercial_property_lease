@@ -117,62 +117,80 @@ hallucinate a confirmation even when told not to, so a fabricated or
 already-taken slot is silently dropped rather than passed through.
 When `POST /api/v1/properties/{id}/chat`'s response includes a
 non-null `booking`, `ChatWithLandlord` calls the same
-`useBookingsStore` (`lib/store/bookings-store.ts`, localStorage-backed
-— see Scheduling below) that the manual "Schedule a visit" flow uses,
-so a chat-confirmed visit shows up in Profile > My bookings exactly
-like a manually scheduled one.
+`POST /api/v1/visits` (via `useBookVisitMutation`, see Scheduling
+below) that the manual "Schedule a visit" flow uses, so a chat-confirmed
+visit is a real `Visit` row and shows up in Profile > My bookings
+exactly like a manually scheduled one — going through `VisitService`
+means it gets the same conflict-checking and slot re-validation either
+way, not a separate path.
 
 ## Scheduling a visit
 
-There's no real landlord/broker calendar system, so "Schedule a visit"
-is filler with the same honesty as the amenities/nearby/photo data:
-`getTimeSlots`/`getUpcomingDates` (`apps/web/lib/property-
-schedule.ts`) deterministically generate ~70%-available hourly slots
-Monday-Saturday (closed Sundays) per property+date. `ScheduleVisitCta`
-is the property detail page's primary CTA (a full-width banner right
-under the title, ahead of the stats grid) opening
-`ScheduleVisitModal` — a date-strip + time-grid picker reused as-is by
-the profile page's "Reschedule" action. Confirmed bookings live in
-`useBookingsStore` (Zustand + `persist`, i.e. localStorage — there's no
-backend Visit/Booking model), with `addBooking`/`cancelBooking`/
-`rescheduleBooking` actions. `/profile` lists them (upcoming and
-cancelled, separately) with Reschedule/Cancel per booking.
+There's still no real landlord/broker calendar system, but bookings
+themselves are now a real backend model: `Visit`
+(`app/models/visit.py` — `property_id`, `tenant_id`, `visit_date`,
+`visit_time`, `status: upcoming|cancelled`), backed by
+`VisitRepository`/`VisitService`/`POST|GET /api/v1/visits`,
+`PATCH /api/v1/visits/{id}/reschedule`, `POST /api/v1/visits/{id}/cancel`
+(`app/api/v1/visits.py`). Availability itself is still deterministic
+filler with the same honesty as the amenities/nearby/photo data —
+`getTimeSlots`/`getUpcomingDates` (`apps/web/lib/property-schedule.ts`,
+mirrored server-side by `app/services/visit_schedule.py`) generate
+~70%-available hourly slots Monday-Saturday (closed Sundays) per
+property+date, and — since a same-day fix — exclude times that have
+already passed today. `ScheduleVisitCta` is the property detail page's
+primary CTA (a full-width banner right under the title, ahead of the
+stats grid) opening `ScheduleVisitModal` — a date-strip + time-grid
+picker reused as-is by the profile page's "Reschedule" action, now with
+an async `onConfirm` and a "Booking…" submitting state since booking
+means a real network round-trip. `apps/web/lib/hooks/use-visits.ts`
+wraps the four endpoints in React Query hooks
+(`useVisitsQuery`/`useBookVisitMutation`/`useRescheduleVisitMutation`/
+`useCancelVisitMutation`), invalidating the shared `["visits"]` query
+key on every mutation so `ScheduleVisitCta`, `ChatWithLandlord`, and
+`/profile` all stay in sync off one source of truth. `/profile` lists
+visits (upcoming and cancelled, separately) with Reschedule/Cancel per
+visit, each gated behind a `ConfirmDialog` rather than acting
+immediately.
 
-`useBookingsStore.checkConflict(propertyId, dateKey, time,
-excludeBookingId?)` is the single place both booking rules are
-enforced, called from every path that can create/move a booking
-(`ScheduleVisitCta`, the profile page's reschedule flow, and
-`ChatWithLandlord` when the chat agent confirms one — see the AI Layer
-section above): a tenant can't have two upcoming visits for the same
-property (reschedule/cancel the existing one instead), and can't have
-two upcoming visits at the same date+time across different properties.
-`excludeBookingId` lets a reschedule check against every *other*
-booking without conflicting with itself. `ScheduleVisitCta` is also
-booking-aware: if the tenant already has an upcoming visit for *this*
-property, it replaces the "Schedule a visit" button with the
-appointment's date/time plus Reschedule/Cancel, rather than only
-catching the conflict after the fact.
+`VisitService` is the single place both booking rules are enforced,
+via `VisitRepository.find_conflict(tenant_id, property_id, visit_date,
+visit_time, exclude_visit_id?)`: a tenant can't have two upcoming
+visits for the same property (reschedule/cancel the existing one
+instead), and can't have two upcoming visits at the same date+time
+across different properties. It also re-validates the requested slot
+against `visit_schedule.is_slot_available` before ever writing a row —
+never trusting a booking request just because the client claims a slot
+is open, whether that request came from the manual picker or a chat
+confirmation (`ChatWithLandlord` relays the chat agent's proposed
+booking to the same `POST /api/v1/visits`, and only does so if it
+doesn't already match an existing upcoming visit for that property —
+otherwise the agent re-mentioning an already-confirmed slot on a later
+turn, e.g. the tenant just saying "thanks", would get rejected as a
+false conflict against the visit it just created).
 
-Since bookings themselves only exist in browser localStorage, sending a
-confirmation email requires going through the backend anyway (no SMTP
-from the browser). `useBookingsStore.addBooking`/`rescheduleBooking`
-fire-and-forget a `POST /api/v1/notifications/booking` call after
-updating local state — best-effort, failures are swallowed so a flaky
-email never blocks a booking that already succeeded locally. The
-endpoint (`api/v1/notifications.py`) reads the tenant's email off
-`current_user` (not the request body, so it can't be spoofed) and
-sends via `BookingNotificationService`, which drafts the subject/body
-and hands off to whatever `NotificationSender` `get_notification_sender()`
-resolves: `SmtpNotificationSender` if `SMTP_HOST` is configured, else
-the existing `ConsoleNotificationSender` (logs instead of sending, so
-local dev never needs real SMTP credentials). Same email copy is used
-for both "booked" and "rescheduled", just with different wording.
+On success, `VisitService.book_visit`/`reschedule_visit` send a
+confirmation email in the same request — no separate client-triggered
+call, no dependency on the booking surviving only in browser state.
+They hand off to `BookingNotificationService`, which drafts the
+subject/body and calls whatever `NotificationSender`
+`get_notification_sender()` resolves: `SmtpNotificationSender` if
+`SMTP_HOST` is configured, else `ConsoleNotificationSender` (logs
+instead of sending, so local dev never needs real SMTP credentials).
+Same email copy is used for both "booked" and "rescheduled", just with
+different wording. Both `NotificationSender` implementations log on
+every call (`notification.sender_selected`, and
+`notification.email_sent`/`notification.email_failed` on the SMTP
+path) specifically so a deploy's logs can confirm whether a send
+actually happened, rather than staying silent on success and
+indistinguishable from a request that never reached this code at all.
 
 ## Watchlist
 
 `useWatchlistStore` (`apps/web/lib/store/watchlist-store.ts`, Zustand +
-`persist`/localStorage — same pattern and same "no backend model"
-caveat as bookings) stores full `ApiProperty` objects, not just ids, so
+`persist`/localStorage — unlike bookings, which now have a real
+backend `Visit` model, watchlist entries are still client-only) stores
+full `ApiProperty` objects, not just ids, so
 `/profile`'s Watchlist section can render `PropertyCard`s directly
 without refetching each one. The heart toggle
 (`isWatchlisted`/`toggle`) lives on `PropertyCard` itself (used by
