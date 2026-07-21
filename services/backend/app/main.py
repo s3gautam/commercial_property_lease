@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,12 +6,23 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
-from app.core.logging import configure_logging
+from app.core.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     configure_logging()
+    # RAILWAY_GIT_COMMIT_SHA is set automatically by Railway - logging it
+    # on every boot makes it possible to confirm from the Deploy Logs
+    # alone which commit is actually running, rather than inferring it
+    # from behavior.
+    logger.info(
+        "app.startup",
+        commit_sha=os.environ.get("RAILWAY_GIT_COMMIT_SHA", "unknown"),
+        environment=get_settings().environment,
+    )
     yield
 
 
